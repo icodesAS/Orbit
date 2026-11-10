@@ -102,29 +102,29 @@ export default function NewOpportunityModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-lg bg-[#111115] border border-zinc-700/90 shadow-2xl overflow-hidden"
+        className="w-full max-w-lg rounded-lg bg-white border border-[#E5E5E1] shadow-xl overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-label="Create New Opportunity"
       >
-        <div className="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between">
+        <div className="px-5 py-3.5 border-b border-[#E5E5E1] flex items-center justify-between bg-white">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-blue-400">
+            <span className="font-mono text-xs text-[#4355B9] font-medium">
               ORB-{String(nextCodeNumber).padStart(2, '0')}
             </span>
-            <h2 className="text-sm font-semibold text-zinc-100">
+            <h2 className="text-sm font-semibold text-[#16181D]">
               New Opportunity Track
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-zinc-400 hover:text-zinc-100 p-1 rounded"
+            className="text-[#6B7280] hover:text-[#16181D] p-1 rounded"
           >
             <X className="w-4 h-4" />
           </button>
@@ -133,7 +133,7 @@ export default function NewOpportunityModal({
         <form onSubmit={handleSubmit} className="p-5 space-y-3.5 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-zinc-400 mb-1">
+              <label className="block text-[#6B7280] mb-1 font-medium">
                 Opportunity Title *
               </label>
               <input
@@ -143,24 +143,24 @@ export default function NewOpportunityModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Systems Builder Sprint"
-                className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none"
+                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-zinc-400 mb-1">Organization</label>
+              <label className="block text-[#6B7280] mb-1 font-medium">Organization</label>
               <input
                 type="text"
                 value={organization}
                 onChange={(e) => setOrganization(e.target.value)}
                 placeholder="e.g. Open Systems Lab"
-                className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none"
+                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-zinc-400 mb-1 flex items-center gap-1">
-              <Globe className="w-3 h-3 text-zinc-500" />
+            <label className="block text-[#6B7280] mb-1 flex items-center gap-1 font-medium">
+              <Globe className="w-3 h-3 text-[#6B7280]" />
               <span>Source or Program URL</span>
             </label>
             <input
@@ -168,17 +168,17 @@ export default function NewOpportunityModal({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/apply"
-              className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none font-mono text-[11px]"
+              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none font-mono text-[11px]"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-zinc-400 mb-1">Tier</label>
+              <label className="block text-[#6B7280] mb-1 font-medium">Tier</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as OpportunityStatus)}
-                className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-2.5 py-2 text-zinc-100 font-mono focus:outline-none"
+                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-2.5 py-1.5 text-[#16181D] font-mono focus:outline-none"
               >
                 <option value="active">Active Build</option>
                 <option value="waitlist">Waitlist Watch</option>
@@ -187,11 +187,11 @@ export default function NewOpportunityModal({
             </div>
 
             <div>
-              <label className="block text-zinc-400 mb-1">Type</label>
+              <label className="block text-[#6B7280] mb-1 font-medium">Type</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as OpportunityType)}
-                className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-2.5 py-2 text-zinc-100 font-mono focus:outline-none"
+                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-2.5 py-1.5 text-[#16181D] font-mono focus:outline-none"
               >
                 <option value="hackathon">hackathon</option>
                 <option value="fellowship">fellowship</option>
@@ -202,11 +202,11 @@ export default function NewOpportunityModal({
             </div>
 
             <div>
-              <label className="block text-zinc-400 mb-1">Deadline Horizon</label>
+              <label className="block text-[#6B7280] mb-1 font-medium">Deadline Horizon</label>
               <select
                 value={daysUntilDeadline}
                 onChange={(e) => setDaysUntilDeadline(e.target.value)}
-                className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-2.5 py-2 text-zinc-100 font-mono focus:outline-none"
+                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-2.5 py-1.5 text-[#16181D] font-mono focus:outline-none"
               >
                 <option value="0.75">18h (Red Heat)</option>
                 <option value="2">2 days (Amber Heat)</option>
@@ -218,7 +218,7 @@ export default function NewOpportunityModal({
 
           {projects.length > 0 && (
             <div>
-              <label className="block text-zinc-400 mb-1">Link Arsenal Projects</label>
+              <label className="block text-[#6B7280] mb-1 font-medium">Link Arsenal Projects</label>
               <div className="flex flex-wrap gap-2">
                 {projects.map((p) => {
                   const active = selectedProjectIds.includes(p.id);
@@ -227,10 +227,10 @@ export default function NewOpportunityModal({
                       key={p.id}
                       type="button"
                       onClick={() => toggleProject(p.id)}
-                      className={`px-2.5 py-1.5 rounded font-mono text-xs border transition-colors ${
+                      className={`px-2.5 py-1 rounded-md font-mono text-xs border transition-colors ${
                         active
-                          ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
-                          : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                          ? 'bg-[#4355B9]/10 border-[#4355B9]/40 text-[#4355B9] font-medium'
+                          : 'bg-[#F5F5F3] border-[#E5E5E1] text-[#6B7280] hover:text-[#16181D]'
                       }`}
                     >
                       {p.title}
@@ -242,37 +242,37 @@ export default function NewOpportunityModal({
           )}
 
           <div>
-            <label className="block text-zinc-400 mb-1">First Sub-Task</label>
+            <label className="block text-[#6B7280] mb-1 font-medium">First Sub-Task</label>
             <input
               type="text"
               value={initialTask}
               onChange={(e) => setInitialTask(e.target.value)}
-              className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none"
+              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-zinc-400 mb-1">Application Pitch / Notes</label>
+            <label className="block text-[#6B7280] mb-1 font-medium">Application Pitch / Notes</label>
             <textarea
               rows={2}
               value={applicationCopy}
               onChange={(e) => setApplicationCopy(e.target.value)}
               placeholder="Core thesis or application focus..."
-              className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none"
+              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E5E1]">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
+              className="px-3 py-1.5 rounded-lg bg-white border border-[#E5E5E1] text-[#6B7280] hover:text-[#16181D]"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium flex items-center gap-1.5"
+              className="px-4 py-1.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-white font-medium flex items-center gap-1.5 shadow-2xs transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create Track</span>

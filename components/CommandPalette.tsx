@@ -118,20 +118,20 @@ export default function CommandPalette({
         action: () => { onClose(); onOpenNewModal(); },
       },
       {
-        id: 'cmd-toggle-board',
-        category: 'Actions',
-        label: 'Toggle Pipeline List / Kanban Board View',
-        sublabel: 'Switch layout density',
-        shortcut: 'V',
-        icon: LayoutGrid,
-        action: () => { onToggleViewMode(); onClose(); },
+        id: 'nav-today',
+        category: 'Navigation',
+        label: 'Go to Today Horizon',
+        sublabel: '72h hard deadlines and morning digest summary',
+        shortcut: '1',
+        icon: List,
+        action: () => { onSelectSection('today'); onClose(); },
       },
       {
         id: 'nav-pipeline',
         category: 'Navigation',
         label: 'Go to Pipeline',
-        sublabel: 'Three operational tiers + Today strip',
-        shortcut: '1',
+        sublabel: 'Three operational tiers: Active, Waitlist, Submitted',
+        shortcut: '2',
         icon: Layers,
         action: () => { onSelectSection('pipeline'); onClose(); },
       },
@@ -140,7 +140,7 @@ export default function CommandPalette({
         category: 'Navigation',
         label: 'Go to Radar',
         sublabel: 'Daily discovery logs (1A, 1B, 1C, 2)',
-        shortcut: '2',
+        shortcut: '3',
         icon: Radar,
         action: () => { onSelectSection('radar'); onClose(); },
       },
@@ -149,7 +149,7 @@ export default function CommandPalette({
         category: 'Navigation',
         label: 'Go to Project Arsenal',
         sublabel: projects.map((p) => p.title).join(', ') || 'Arsenal repositories',
-        shortcut: '3',
+        shortcut: '4',
         icon: FolderGit2,
         action: () => { onSelectSection('arsenal'); onClose(); },
       },
@@ -158,7 +158,6 @@ export default function CommandPalette({
         category: 'Navigation',
         label: 'Go to Settings',
         sublabel: 'Demo mode, BYOK API key, model config',
-        shortcut: '4',
         icon: SlidersHorizontal,
         action: () => { onSelectSection('settings'); onClose(); },
       }
@@ -178,7 +177,7 @@ export default function CommandPalette({
       });
 
     return list;
-  }, [focusedOpportunity, opportunities, projects, onAdvanceStatus, onClose, onOpenAskAI, onOpenNewModal, onSelectOpportunity, onSelectSection, onToggleProjectLink, onToggleViewMode]);
+  }, [focusedOpportunity, opportunities, projects, onAdvanceStatus, onClose, onOpenAskAI, onOpenNewModal, onSelectOpportunity, onSelectSection, onToggleProjectLink]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return commands;
@@ -208,35 +207,35 @@ export default function CommandPalette({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[13vh] px-4 bg-black/70 backdrop-blur-[2px]" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[13vh] px-4 bg-black/35 backdrop-blur-xs select-none" onClick={onClose}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.97, y: -8 }}
+          initial={{ opacity: 0, scale: 0.98, y: -6 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, y: -8 }}
-          transition={{ duration: 0.14 }}
+          exit={{ opacity: 0, scale: 0.98, y: -6 }}
+          transition={{ duration: 0.15 }}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={handleKeyDown}
-          className="w-full max-w-xl rounded-lg bg-[#111115] border border-zinc-700/90 shadow-2xl overflow-hidden"
+          className="w-full max-w-xl rounded-lg bg-white border border-[#E5E5E1] shadow-2xl overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Orbit Command Palette"
         >
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
-            <Search className="w-4 h-4 text-blue-400 shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E5E5E1] bg-white">
+            <Search className="w-4 h-4 text-[#4355B9] shrink-0" />
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
               placeholder="Type a command, opportunity code, or project name..."
-              className="flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+              className="flex-1 bg-transparent text-sm text-[#16181D] placeholder:text-[#6B7280] focus:outline-none"
             />
-            <kbd className="font-mono text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">ESC</kbd>
+            <kbd className="font-mono text-[10px] text-[#6B7280] bg-[#F5F5F3] border border-[#E5E5E1] px-1.5 py-0.5 rounded">ESC</kbd>
           </div>
 
-          <div className="max-h-80 overflow-y-auto p-1.5 divide-y divide-zinc-800/40">
+          <div className="max-h-80 overflow-y-auto p-1.5 divide-y divide-[#E5E5E1]/60">
             {filtered.length === 0 ? (
-              <div className="py-8 text-center text-xs text-zinc-500 font-mono">No matching commands or opportunities for &ldquo;{query}&rdquo;</div>
+              <div className="py-8 text-center text-xs text-[#6B7280] font-mono">No matching commands or opportunities for &ldquo;{query}&rdquo;</div>
             ) : (
               filtered.map((item, idx) => {
                 const Icon = item.icon;
@@ -248,18 +247,18 @@ export default function CommandPalette({
                     onMouseEnter={() => setSelectedIndex(idx)}
                     onClick={item.action}
                     className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded text-left transition-colors ${
-                      isSelected ? 'bg-blue-600/20 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-900/70'
+                      isSelected ? 'bg-[#4355B9]/10 text-[#16181D]' : 'text-[#6B7280] hover:bg-[#F5F5F3] hover:text-[#16181D]'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-blue-400' : 'text-zinc-500'}`} />
+                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#4355B9]' : 'text-[#6B7280]'}`} />
                       <div className="min-w-0">
                         <div className="text-xs font-medium truncate">{item.label}</div>
-                        {item.sublabel && <div className="text-[11px] font-mono text-zinc-500 truncate">{item.category} · {item.sublabel}</div>}
+                        {item.sublabel && <div className="text-[11px] font-mono text-[#6B7280] truncate">{item.category} · {item.sublabel}</div>}
                       </div>
                     </div>
                     {item.shortcut && (
-                      <kbd className="font-mono text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded shrink-0">{item.shortcut}</kbd>
+                      <kbd className="font-mono text-[10px] text-[#6B7280] bg-[#F5F5F3] border border-[#E5E5E1] px-1.5 py-0.5 rounded shrink-0">{item.shortcut}</kbd>
                     )}
                   </button>
                 );
@@ -267,7 +266,7 @@ export default function CommandPalette({
             )}
           </div>
 
-          <div className="px-4 py-2 bg-[#0c0c0f] border-t border-zinc-800/90 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+          <div className="px-4 py-2 bg-[#F5F5F3] border-t border-[#E5E5E1] flex items-center justify-between text-[11px] font-mono text-[#6B7280]">
             <div className="flex items-center gap-3">
               <span>↑↓ Navigate</span>
               <span>↵ Execute</span>

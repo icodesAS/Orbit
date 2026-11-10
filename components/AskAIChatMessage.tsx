@@ -13,24 +13,24 @@ export default function AskAIChatMessage({ message }: AskAIChatMessageProps) {
 
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-      <div className="flex items-center gap-2 mb-1 text-[10px] font-mono text-zinc-500">
+      <div className="flex items-center gap-2 mb-1 text-[10px] font-mono text-[#6B7280]">
         <span>{isUser ? 'BUILDER' : 'ORBIT AI'}</span>
         <span>·</span>
         <span>{message.createdAt}</span>
       </div>
       <div
-        className={`max-w-[92%] rounded px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
+        className={`max-w-[92%] rounded-lg px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
           isUser
-            ? 'bg-blue-600/20 border border-blue-500/30 text-zinc-100'
-            : 'bg-[#131318] border border-zinc-800 text-zinc-200'
+            ? 'bg-[#4355B9]/10 border border-[#4355B9]/25 text-[#16181D]'
+            : 'bg-[#F5F5F3] border border-[#E5E5E1] text-[#16181D]'
         }`}
       >
         {message.content}
 
         {message.sources && message.sources.length > 0 && (
-          <div className="mt-2.5 pt-2 border-t border-zinc-800/80 space-y-1">
-            <div className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+          <div className="mt-2.5 pt-2 border-t border-[#E5E5E1] space-y-1">
+            <div className="text-[10px] font-mono text-[#6B7280] flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-[#067647]" />
               <span>Search Grounding Sources:</span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -40,7 +40,7 @@ export default function AskAIChatMessage({ message }: AskAIChatMessageProps) {
                   href={src.uri}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-mono text-blue-400 hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] font-mono text-[#4355B9] hover:underline"
                 >
                   <ExternalLink className="w-2.5 h-2.5" />
                   <span className="truncate max-w-[200px]">{src.title}</span>

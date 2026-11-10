@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
 import {
+  Calendar,
   Layers,
   Radar,
   FolderGit2,
@@ -10,18 +10,21 @@ import {
   Command,
   Plus,
   Keyboard,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
+import { NavSection } from './MobileNavBar';
 
-export type NavSection = 'pipeline' | 'radar' | 'arsenal' | 'settings';
+export type { NavSection };
 
 interface SidebarProps {
   activeSection: NavSection;
   onSelectSection: (section: NavSection) => void;
   counts: {
+    urgent72h: number;
     pipeline: number;
     radarUnreviewed: number;
     arsenal: number;
-    urgent72h: number;
   };
   isLive?: boolean;
   onOpenCommandPalette: () => void;
@@ -38,8 +41,8 @@ export default function Sidebar({
   onOpenNewModal,
   onOpenShortcutsModal,
 }: SidebarProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const prefersReducedMotion = useReducedMotion();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
 
   const navItems: {
     id: NavSection;
@@ -49,194 +52,220 @@ export default function Sidebar({
     count?: number;
   }[] = [
     {
+      id: 'today',
+      label: 'Today',
+      shortcut: '1',
+      icon: Calendar,
+      count: counts.urgent72h,
+    },
+    {
       id: 'pipeline',
       label: 'Pipeline',
-      shortcut: '1',
+      shortcut: '2',
       icon: Layers,
       count: counts.pipeline,
     },
     {
       id: 'radar',
       label: 'Radar',
-      shortcut: '2',
+      shortcut: '3',
       icon: Radar,
       count: counts.radarUnreviewed,
     },
     {
       id: 'arsenal',
       label: 'Arsenal',
-      shortcut: '3',
+      shortcut: '4',
       icon: FolderGit2,
       count: counts.arsenal,
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      shortcut: '4',
-      icon: SlidersHorizontal,
     },
   ];
 
   return (
-    <>
-      <motion.aside
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        initial={false}
-        animate={{ width: isHovered ? 212 : 56 }}
-        transition={
-          prefersReducedMotion
-            ? { duration: 0 }
-            : { type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }
-        }
-        className="hidden md:flex flex-col justify-between h-screen bg-[#0c0c0e] border-r border-zinc-800/80 select-none shrink-0 z-30 overflow-hidden"
-        aria-label="Primary Navigation"
-      >
-        <div className="flex flex-col">
-          <div className="h-12 flex items-center px-3.5 border-b border-zinc-800/80 gap-3">
-            <div className="w-7 h-7 rounded bg-blue-600/15 border border-blue-500/40 flex items-center justify-center shrink-0 text-blue-400 font-mono font-bold text-xs tracking-tighter">
+    <aside
+      className={`hidden md:flex flex-col justify-between h-screen bg-white border-r border-[#E5E5E1] select-none shrink-0 z-30 transition-[width] duration-150 ease-out ${
+        isCollapsed ? 'w-14' : 'w-[220px]'
+      }`}
+      aria-label="Primary Navigation"
+    >
+      <div className="flex flex-col min-w-0">
+        {/* Workspace Brand & Collapse Toggle */}
+        <div className="h-12 flex items-center justify-between px-3.5 border-b border-[#E5E5E1] gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
+            <div className="w-6 h-6 rounded bg-[#4355B9]/10 border border-[#4355B9]/20 flex items-center justify-center shrink-0 text-[#4355B9] font-mono font-bold text-[11px]">
               OR
             </div>
-            <motion.div
-              animate={{ opacity: isHovered ? 1 : 0 }}
-              transition={{ duration: 0.14 }}
-              className="flex items-center justify-between flex-1 min-w-0 overflow-hidden whitespace-nowrap"
-            >
-              <span className="font-semibold text-sm tracking-tight text-zinc-100">
-                Orbit
-              </span>
-              <span
-                className={`font-mono text-[10px] tabular-nums px-1.5 py-0.2 rounded border ${
-                  isLive
-                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                    : 'text-amber-400 bg-amber-500/10 border-amber-500/30'
-                }`}
-              >
-                {isLive ? 'LIVE' : 'DEMO'}
-              </span>
-            </motion.div>
-          </div>
-
-          <div className="p-2 border-b border-zinc-800/60">
-            <button
-              type="button"
-              onClick={onOpenNewModal}
-              title="New Opportunity (N)"
-              className="w-full h-8 flex items-center gap-3 px-2.5 rounded bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-800 text-zinc-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
-            >
-              <Plus className="w-4 h-4 text-blue-400 shrink-0" />
-              <motion.div
-                animate={{ opacity: isHovered ? 1 : 0 }}
-                transition={{ duration: 0.12 }}
-                className="flex items-center justify-between flex-1 min-w-0 whitespace-nowrap overflow-hidden"
-              >
-                <span className="text-xs font-medium text-zinc-200">
-                  New Track
+            {!isCollapsed && (
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-semibold text-sm tracking-tight text-[#16181D]">
+                  Orbit
                 </span>
-                <kbd className="font-mono text-[10px] text-zinc-500">N</kbd>
-              </motion.div>
-            </button>
-          </div>
-
-          <nav className="p-2 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeSection === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onSelectSection(item.id)}
-                  title={`${item.label} (${item.shortcut})`}
-                  className={`w-full h-9 flex items-center gap-3 px-2.5 rounded transition-colors relative focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 ${
-                    isActive
-                      ? 'bg-blue-500/12 text-blue-400 border border-blue-500/25'
-                      : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/80 border border-transparent'
+                <span
+                  className={`font-mono text-[9px] px-1 py-0.2 rounded border uppercase font-medium ${
+                    isLive
+                      ? 'text-[#067647] bg-[#ECFDF3] border-[#D1FADF]'
+                      : 'text-[#B54708] bg-[#FEF0C7] border-[#FEDF89]'
                   }`}
                 >
+                  {isLive ? 'LIVE' : 'DEMO'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] transition-colors shrink-0"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+
+        {/* New Opportunity Track CTA */}
+        <div className="p-2 border-b border-[#E5E5E1]/70">
+          <button
+            type="button"
+            onClick={onOpenNewModal}
+            title="New Opportunity (N)"
+            className={`w-full h-8 flex items-center gap-2.5 rounded-lg border border-[#E5E5E1] bg-[#F5F5F3] hover:bg-white text-[#16181D] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#4355B9] ${
+              isCollapsed ? 'justify-center px-0' : 'px-2.5 justify-between'
+            }`}
+          >
+            <span className="flex items-center gap-2 truncate">
+              <Plus className="w-3.5 h-3.5 text-[#4355B9] shrink-0" />
+              {!isCollapsed && (
+                <span className="text-xs font-medium truncate">New Track</span>
+              )}
+            </span>
+            {!isCollapsed && (
+              <kbd className="font-mono text-[10px] text-[#6B7280] bg-white border border-[#E5E5E1] px-1 py-0.2 rounded shadow-2xs">
+                N
+              </kbd>
+            )}
+          </button>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="p-2 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelectSection(item.id)}
+                title={`${item.label} (${item.shortcut})`}
+                className={`w-full h-8.5 flex items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#4355B9] ${
+                  isCollapsed ? 'justify-center px-0' : 'justify-between px-2.5'
+                } ${
+                  isActive
+                    ? 'bg-[#4355B9]/10 text-[#4355B9] font-medium'
+                    : 'text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
                   <Icon className="w-4 h-4 shrink-0" />
-                  <motion.div
-                    animate={{ opacity: isHovered ? 1 : 0 }}
-                    transition={{ duration: 0.12 }}
-                    className="flex items-center justify-between flex-1 min-w-0 whitespace-nowrap overflow-hidden"
-                  >
-                    <span className="text-xs font-medium">{item.label}</span>
-                    <div className="flex items-center gap-1.5">
-                      {typeof item.count === 'number' && (
-                        <span className="font-mono text-[11px] tabular-nums text-zinc-400">
-                          {item.count}
-                        </span>
-                      )}
-                      <kbd className="font-mono text-[10px] text-zinc-600">
-                        {item.shortcut}
-                      </kbd>
-                    </div>
-                  </motion.div>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+                  {!isCollapsed && (
+                    <span className="text-xs truncate">{item.label}</span>
+                  )}
+                </div>
 
-        <div className="p-2 border-t border-zinc-800/80 space-y-1">
-          <button
-            type="button"
-            onClick={onOpenCommandPalette}
-            title="Command Palette (⌘K)"
-            className="w-full h-8 flex items-center gap-3 px-2.5 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                {!isCollapsed && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {typeof item.count === 'number' && item.count > 0 && (
+                      <span
+                        className={`font-mono text-[11px] tabular-nums px-1.5 py-0.2 rounded ${
+                          isActive
+                            ? 'bg-[#4355B9]/15 text-[#4355B9]'
+                            : 'bg-[#F5F5F3] text-[#6B7280]'
+                        }`}
+                      >
+                        {item.count}
+                      </span>
+                    )}
+                    <kbd className="font-mono text-[10px] text-[#6B7280]/60">
+                      {item.shortcut}
+                    </kbd>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Footer / Settings Menu */}
+      <div className="p-2 border-t border-[#E5E5E1] space-y-1 relative">
+        {/* Settings Popover */}
+        {isSettingsMenuOpen && (
+          <div
+            className="absolute bottom-11 left-2 w-48 bg-white border border-[#E5E5E1] rounded-lg shadow-md p-1 space-y-0.5 text-xs z-50"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Command className="w-4 h-4 shrink-0 text-zinc-400" />
-            <motion.div
-              animate={{ opacity: isHovered ? 1 : 0 }}
-              transition={{ duration: 0.12 }}
-              className="flex items-center justify-between flex-1 min-w-0 whitespace-nowrap overflow-hidden"
-            >
-              <span className="text-xs">Commands</span>
-              <kbd className="font-mono text-[10px] text-zinc-500">⌘K</kbd>
-            </motion.div>
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenShortcutsModal}
-            title="Keyboard Shortcuts (?)"
-            className="w-full h-8 flex items-center gap-3 px-2.5 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
-          >
-            <Keyboard className="w-4 h-4 shrink-0 text-zinc-500" />
-            <motion.div
-              animate={{ opacity: isHovered ? 1 : 0 }}
-              transition={{ duration: 0.12 }}
-              className="flex items-center justify-between flex-1 min-w-0 whitespace-nowrap overflow-hidden"
-            >
-              <span className="text-xs">Keymap</span>
-              <kbd className="font-mono text-[10px] text-zinc-500">?</kbd>
-            </motion.div>
-          </button>
-        </div>
-      </motion.aside>
-
-      <nav
-        aria-label="Mobile Navigation"
-        className="md:hidden fixed bottom-0 inset-x-0 h-13 bg-[#0c0c0e]/95 backdrop-blur border-t border-zinc-800/90 flex items-center justify-around px-2 z-30"
-      >
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeSection === item.id;
-          return (
             <button
-              key={item.id}
               type="button"
-              onClick={() => onSelectSection(item.id)}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded text-xs transition-colors whitespace-nowrap shrink-0 ${
-                isActive ? 'text-blue-400' : 'text-zinc-400 hover:text-zinc-200'
-              }`}
+              onClick={() => {
+                onSelectSection('settings');
+                setIsSettingsMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left text-[#16181D] hover:bg-[#F5F5F3] font-medium"
             >
-              <Icon className="w-4 h-4 mb-0.5" />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#6B7280]" />
+              <span>Workspace Settings</span>
             </button>
-          );
-        })}
-      </nav>
-    </>
+            <button
+              type="button"
+              onClick={() => {
+                onOpenShortcutsModal();
+                setIsSettingsMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3]"
+            >
+              <Keyboard className="w-3.5 h-3.5 text-[#6B7280]" />
+              <span>Shortcuts Map (?)</span>
+            </button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setIsSettingsMenuOpen((prev) => !prev)}
+          title="Settings & Menu"
+          className={`w-full h-8 flex items-center rounded-lg transition-colors text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] ${
+            isCollapsed ? 'justify-center px-0' : 'justify-between px-2.5'
+          } ${activeSection === 'settings' ? 'bg-[#4355B9]/10 text-[#4355B9]' : ''}`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <SlidersHorizontal className="w-4 h-4 shrink-0" />
+            {!isCollapsed && <span className="text-xs truncate">Settings</span>}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenCommandPalette}
+          title="Command Palette (⌘K)"
+          className={`w-full h-8 flex items-center rounded-lg transition-colors text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] ${
+            isCollapsed ? 'justify-center px-0' : 'justify-between px-2.5'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Command className="w-4 h-4 shrink-0" />
+            {!isCollapsed && <span className="text-xs truncate">Commands</span>}
+          </div>
+          {!isCollapsed && (
+            <kbd className="font-mono text-[10px] text-[#6B7280]">⌘K</kbd>
+          )}
+        </button>
+      </div>
+    </aside>
   );
 }

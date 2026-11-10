@@ -21,14 +21,14 @@ export default function SampleDataBanner({
     <div
       role="status"
       aria-label="Demo Mode Sample Data Banner"
-      className="bg-amber-950/40 border-b border-amber-600/30 px-4 py-1.5 flex items-center justify-between text-xs text-amber-200 shrink-0"
+      className="bg-[#FEF0C7] border-b border-[#FEDF89] px-4 py-1.5 flex items-center justify-between text-xs text-[#B54708] shrink-0 select-none"
     >
       <div className="flex items-center gap-2 min-w-0">
-        <Database className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-        <span className="font-semibold text-[11px] tracking-wide uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
+        <Database className="w-3.5 h-3.5 text-[#B54708] shrink-0" />
+        <span className="font-semibold text-[10px] tracking-wide uppercase px-1.5 py-0.2 rounded bg-[#B54708]/15 text-[#B54708] font-mono border border-[#B54708]/20">
           SAMPLE DATA
         </span>
-        <span className="text-amber-200/90 truncate text-[11px]">
+        <span className="text-[#B54708]/90 truncate text-xs">
           Sample data is currently loaded in your workspace.
         </span>
       </div>
@@ -37,9 +37,9 @@ export default function SampleDataBanner({
         type="button"
         onClick={onRemoveSampleData}
         title="Remove only sample data items (custom created items are preserved)"
-        className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 hover:text-white border border-amber-500/40 text-[11px] font-mono transition-colors shrink-0 ml-3"
+        className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-white hover:bg-[#F5F5F3] text-[#B54708] border border-[#FEDF89] text-[11px] font-mono transition-colors shrink-0 ml-3 shadow-2xs"
       >
-        <Trash2 className="w-3 h-3 text-amber-300" />
+        <Trash2 className="w-3 h-3 text-[#B54708]" />
         <span>Remove sample data</span>
       </button>
     </div>

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { DeadlineInfo } from '@/lib/deadline';
-import { Flame, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 
 interface OpportunityHeatChipProps {
   deadlineInfo: DeadlineInfo;
@@ -11,55 +10,52 @@ interface OpportunityHeatChipProps {
 export default function OpportunityHeatChip({ deadlineInfo }: OpportunityHeatChipProps) {
   if (deadlineInfo.heat === 'red') {
     return (
-      <div
-        className="flex items-center gap-1.5 font-mono text-xs tabular-nums text-rose-400 font-semibold whitespace-nowrap shrink-0"
-        title={`Urgent (<24h): Due ${deadlineInfo.absoluteLabel}`}
+      <span
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium text-[#D92D20] bg-[#FEE4E2] border border-[#FECDCA] whitespace-nowrap shrink-0"
+        title={`Urgent (<=24h): Due ${deadlineInfo.absoluteLabel}`}
       >
-        <Flame className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#D92D20] shrink-0" aria-hidden="true" />
         <span>{deadlineInfo.relativeLabel}</span>
-        <span className="text-zinc-600 font-normal">·</span>
-        <span className="text-rose-300/80 font-normal">{deadlineInfo.absoluteLabel}</span>
-      </div>
+        <span className="text-[#D92D20]/50" aria-hidden="true">·</span>
+        <span className="text-[#D92D20]/80">{deadlineInfo.absoluteLabel}</span>
+      </span>
     );
   }
 
   if (deadlineInfo.heat === 'amber') {
     return (
-      <div
-        className="flex items-center gap-1.5 font-mono text-xs tabular-nums text-amber-400 font-medium whitespace-nowrap shrink-0"
-        title={`Approaching (<=72h): Due ${deadlineInfo.absoluteLabel}`}
+      <span
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium text-[#B54708] bg-[#FEF0C7] border border-[#FEDF89] whitespace-nowrap shrink-0"
+        title={`Approaching (<=3 days): Due ${deadlineInfo.absoluteLabel}`}
       >
-        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
         <span>{deadlineInfo.relativeLabel}</span>
-        <span className="text-zinc-600 font-normal">·</span>
-        <span className="text-amber-200/80 font-normal">{deadlineInfo.absoluteLabel}</span>
-      </div>
+        <span className="text-[#B54708]/50" aria-hidden="true">·</span>
+        <span className="text-[#B54708]/80">{deadlineInfo.absoluteLabel}</span>
+      </span>
     );
   }
 
   if (deadlineInfo.heat === 'submitted') {
     return (
-      <div
-        className="flex items-center gap-1.5 font-mono text-xs tabular-nums text-emerald-400 whitespace-nowrap shrink-0"
+      <span
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium text-[#067647] bg-[#ECFDF3] border border-[#D1FADF] whitespace-nowrap shrink-0"
         title={`Submitted (${deadlineInfo.absoluteLabel})`}
       >
-        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
         <span>{deadlineInfo.relativeLabel}</span>
-        <span className="text-zinc-600 font-normal">·</span>
-        <span className="text-zinc-400 font-normal">{deadlineInfo.absoluteLabel}</span>
-      </div>
+        <span className="text-[#067647]/50" aria-hidden="true">·</span>
+        <span className="text-[#067647]/80">{deadlineInfo.absoluteLabel}</span>
+      </span>
     );
   }
 
   return (
-    <div
-      className="flex items-center gap-1.5 font-mono text-xs tabular-nums text-zinc-400 whitespace-nowrap shrink-0"
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-normal text-[#6B7280] bg-[#F3F4F6] border border-[#E5E7EB] whitespace-nowrap shrink-0"
       title={`Due ${deadlineInfo.absoluteLabel}`}
     >
-      <Clock className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
       <span>{deadlineInfo.relativeLabel}</span>
-      <span className="text-zinc-600 font-normal">·</span>
-      <span className="text-zinc-500">{deadlineInfo.absoluteLabel}</span>
-    </div>
+      <span className="text-[#6B7280]/50" aria-hidden="true">·</span>
+      <span className="text-[#6B7280]/80">{deadlineInfo.absoluteLabel}</span>
+    </span>
   );
 }

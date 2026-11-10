@@ -56,15 +56,15 @@ export default function ArsenalView({
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
-      <div className="flex items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+      <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#E5E5E1]">
         <div>
           <div className="flex items-center gap-2">
-            <FolderGit2 className="w-4 h-4 text-blue-400" />
-            <h1 className="text-base font-semibold text-zinc-100">
-              Project Arsenal
+            <FolderGit2 className="w-4 h-4 text-[#4355B9]" />
+            <h1 className="text-xl font-semibold text-[#16181D]">
+              Project <span className="font-serif italic font-normal text-[#4355B9]">Arsenal</span>
             </h1>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-[#6B7280] mt-1">
             Flagship projects & context blurbs used by Ask AI and daily discovery to match opportunities.
           </p>
         </div>
@@ -72,7 +72,7 @@ export default function ArsenalView({
         <button
           type="button"
           onClick={() => setShowForm((prev) => !prev)}
-          className="px-3.5 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-xs font-medium text-white flex items-center gap-1.5 whitespace-nowrap shrink-0"
+          className="px-3.5 py-1.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-xs font-medium text-white flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-2xs transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Project</span>
@@ -82,22 +82,22 @@ export default function ArsenalView({
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="p-4 rounded bg-[#111115] border border-zinc-700/80 space-y-3 text-xs"
+          className="p-4 rounded-lg bg-white border border-[#E5E5E1] space-y-3 text-xs shadow-sm"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-zinc-400 mb-1">Project Name *</label>
+              <label className="block text-[#6B7280] mb-1 font-medium">Project Name *</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. TestEngine"
-                className="w-full bg-[#0a0a0d] border border-zinc-800 rounded px-3 py-1.5 text-zinc-100"
+                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-zinc-400 mb-1">
+              <label className="block text-[#6B7280] mb-1 font-medium">
                 Tech Stack (comma-separated)
               </label>
               <input
@@ -105,12 +105,12 @@ export default function ArsenalView({
                 value={techStackInput}
                 onChange={(e) => setTechStackInput(e.target.value)}
                 placeholder="TypeScript, Docker, Rust"
-                className="w-full bg-[#0a0a0d] border border-zinc-800 rounded px-3 py-1.5 text-zinc-100 font-mono"
+                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] font-mono focus:bg-white focus:border-[#4355B9] focus:outline-none"
               />
             </div>
           </div>
           <div>
-            <label className="block text-zinc-400 mb-1">
+            <label className="block text-[#6B7280] mb-1 font-medium">
               One-Line Description
             </label>
             <input
@@ -118,11 +118,11 @@ export default function ArsenalView({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Lightweight test runner with deterministic sandbox verification"
-              className="w-full bg-[#0a0a0d] border border-zinc-800 rounded px-3 py-1.5 text-zinc-100"
+              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-zinc-400 mb-1">
+            <label className="block text-[#6B7280] mb-1 font-medium">
               Context Blurb (~100 words for AI matching)
             </label>
             <textarea
@@ -130,20 +130,20 @@ export default function ArsenalView({
               value={contextBlurb}
               onChange={(e) => setContextBlurb(e.target.value)}
               placeholder="Plain-English architectural summary and benchmarks used by Gemini..."
-              className="w-full bg-[#0a0a0d] border border-zinc-800 rounded px-3 py-1.5 text-zinc-100"
+              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none"
             />
           </div>
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="px-3 py-1.5 rounded bg-zinc-900 text-zinc-300"
+              className="px-3 py-1.5 rounded bg-white border border-[#E5E5E1] text-[#6B7280] hover:text-[#16181D]"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded bg-blue-600 text-white font-medium"
+              className="px-4 py-1.5 rounded bg-[#4355B9] hover:bg-[#3848A3] text-white font-medium transition-colors shadow-2xs"
             >
               Save Project
             </button>
@@ -152,15 +152,15 @@ export default function ArsenalView({
       )}
 
       {projects.length === 0 && !showForm ? (
-        <div className="p-8 text-center rounded border border-zinc-800/80 bg-[#0e0e12] space-y-3">
-          <p className="text-xs text-zinc-400">
+        <div className="p-8 text-center rounded-lg border border-[#E5E5E1] bg-white space-y-3 shadow-2xs">
+          <p className="text-xs text-[#6B7280]">
             No flagship projects in your Arsenal yet.
           </p>
           <div className="flex items-center justify-center gap-2">
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-white font-mono text-xs transition-colors shadow-2xs"
             >
               Add your first project
             </button>
@@ -168,7 +168,7 @@ export default function ArsenalView({
               <button
                 type="button"
                 onClick={onLoadSampleData}
-                className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono text-xs transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#F5F5F3] border border-[#E5E5E1] text-[#16181D] font-mono text-xs transition-colors shadow-2xs"
               >
                 Load sample data
               </button>
@@ -180,27 +180,27 @@ export default function ArsenalView({
           {projects.map((project) => (
             <div
               key={project.id}
-              className="p-4 rounded bg-[#0e0e12] border border-zinc-800/90 flex flex-col justify-between gap-4"
+              className="p-4 rounded-lg bg-white border border-[#E5E5E1] flex flex-col justify-between gap-4 shadow-2xs hover:border-[#D1D1CB] transition-colors"
             >
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-mono text-sm font-semibold text-blue-300">
+                  <h3 className="font-mono text-sm font-semibold text-[#4355B9]">
                     {project.title}
                   </h3>
-                  <span className="font-mono text-[11px] text-zinc-400 tabular-nums">
+                  <span className="font-mono text-[11px] text-[#6B7280] tabular-nums">
                     linked in {project.usedInCount} tracks
                   </span>
                 </div>
-                <p className="text-xs text-zinc-200 font-medium">
+                <p className="text-xs text-[#16181D] font-medium">
                   {project.description}
                 </p>
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <p className="text-xs text-[#6B7280] leading-relaxed">
                   {project.contextBlurb}
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-zinc-800/80 space-y-2">
-                <div className="font-mono text-[11px] text-zinc-400">
+              <div className="pt-3 border-t border-[#E5E5E1] space-y-2">
+                <div className="font-mono text-[11px] text-[#6B7280]">
                   STACK: {project.techStack.join(' · ')}
                 </div>
                 {project.urls.length > 0 && (
@@ -211,7 +211,7 @@ export default function ArsenalView({
                         href={u.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-mono text-[11px] text-blue-400 hover:underline"
+                        className="inline-flex items-center gap-1 font-mono text-[11px] text-[#4355B9] hover:underline"
                       >
                         <span>{u.label}</span>
                         <ExternalLink className="w-2.5 h-2.5" />
