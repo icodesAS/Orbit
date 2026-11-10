@@ -2,20 +2,25 @@
 
 import React, { useState } from 'react';
 import { DEFAULT_GEMINI_MODEL } from '@/lib/config';
-import { Key, RotateCcw, ShieldCheck, Database, Cpu } from 'lucide-react';
+import { Key, RotateCcw, ShieldCheck, Database, Cpu, Trash2 } from 'lucide-react';
 
 interface SettingsViewProps {
   userApiKey: string;
   onUpdateApiKey: (key: string) => void;
   isLive: boolean;
-  onResetDemo: () => void;
+  hasSampleData: boolean;
+  onLoadSampleData: () => void;
+  onRemoveSampleData: () => void;
+  onResetDemo?: () => void;
 }
 
 export default function SettingsView({
   userApiKey,
   onUpdateApiKey,
   isLive,
-  onResetDemo,
+  hasSampleData,
+  onLoadSampleData,
+  onRemoveSampleData,
 }: SettingsViewProps) {
   const [tempKey, setTempKey] = useState(userApiKey);
   const [savedNotice, setSavedNotice] = useState(false);
@@ -46,14 +51,28 @@ export default function SettingsView({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onResetDemo}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-mono text-xs whitespace-nowrap shrink-0 transition-colors"
-        >
-          <RotateCcw className="w-3.5 h-3.5 text-zinc-400" />
-          <span>Reset Demo Dataset</span>
-        </button>
+        {!isLive && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onLoadSampleData}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-mono text-xs whitespace-nowrap shrink-0 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Load sample data</span>
+            </button>
+            {hasSampleData && (
+              <button
+                type="button"
+                onClick={onRemoveSampleData}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-mono text-xs whitespace-nowrap shrink-0 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Remove sample data</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Mode Badge & Storage Info */}
@@ -77,7 +96,9 @@ export default function SettingsView({
           <p className="text-zinc-400 text-[11px] leading-relaxed">
             {isLive
               ? 'Connected to Firebase. Data is synced to Firestore under your user identity.'
-              : 'Zero Firebase credentials detected. Using fictional SAMPLE dataset stored in your browser.'}
+              : hasSampleData
+              ? 'Using fictional SAMPLE dataset stored in your browser localStorage.'
+              : 'Workspace data is saved to your browser localStorage.'}
           </p>
         </div>
 

@@ -18,27 +18,12 @@ import UndoToast from './UndoToast';
 
 export default function OrbitWorkspace() {
   const {
-    opportunities,
-    projects,
-    projectsMap,
-    activeRadarItems,
-    counts,
-    nextCodeNumber,
-    userApiKey,
-    setUserApiKey,
-    isLive,
-    undoAction,
-    setUndoAction,
-    updateOpportunities,
-    handleResetDemo,
-    handleCreateOpportunity,
-    handleAdvanceStatus,
-    handleArchive,
-    handleToggleSubTask,
-    handleAddSubTask,
-    handleToggleProjectLink,
-    handlePromoteRadarItem,
-    handleToggleVerifyRadarItem,
+    opportunities, projects, projectsMap, activeRadarItems, counts,
+    nextCodeNumber, userApiKey, setUserApiKey, isLive, hasSampleData,
+    undoAction, setUndoAction, updateOpportunities, handleResetDemo,
+    handleLoadSampleData, handleRemoveSampleData, handleCreateOpportunity,
+    handleAdvanceStatus, handleArchive, handleToggleSubTask, handleAddSubTask,
+    handleToggleProjectLink, handlePromoteRadarItem, handleToggleVerifyRadarItem,
     handleAddProject,
   } = useOrbitState();
 
@@ -119,6 +104,24 @@ export default function OrbitWorkspace() {
   const submittedOpps = opportunities.filter((o) => o.status === 'submitted');
   const focusedOpp = opportunities.find((o) => o.id === focusedId) || null;
 
+  const handleAddAiMessage = (oppId: string, userText: string, assistantText: string, sources?: any[]) => {
+    updateOpportunities((prev) =>
+      prev.map((o) => o.id === oppId ? {
+        ...o,
+        aiChat: [
+          ...o.aiChat,
+          { id: `msg-${Date.now()}-u`, role: 'user' as const, content: userText, createdAt: 'just now' },
+          { id: `msg-${Date.now()}-a`, role: 'assistant' as const, content: assistantText, createdAt: 'just now', sources },
+        ],
+        updatedAt: new Date().toISOString(),
+      } : o)
+    );
+  };
+
+  const handleClearAiHistory = (oppId: string) => {
+    updateOpportunities((prev) => prev.map((o) => (o.id === oppId ? { ...o, aiChat: [] } : o)));
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#0a0a0d] text-zinc-100 select-none">
       <Sidebar
@@ -132,7 +135,11 @@ export default function OrbitWorkspace() {
       />
 
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <SampleDataBanner isLive={isLive} onResetDemo={handleResetDemo} />
+        <SampleDataBanner
+          isLive={isLive}
+          hasSampleData={hasSampleData}
+          onRemoveSampleData={handleRemoveSampleData}
+        />
 
         {activeSection === 'pipeline' && (
           <>
@@ -141,69 +148,66 @@ export default function OrbitWorkspace() {
               projectsMap={projectsMap}
               focusedId={focusedId}
               unreviewedRadarCount={counts.radarUnreviewed}
+              isLive={isLive}
+              hasSampleData={hasSampleData}
               onFocusOpportunity={setSelectedFocusedId}
               onOpenAskAI={setSelectedAiOpp}
               onAdvanceStatus={handleAdvanceStatus}
               onJumpToRadar={() => setActiveSection('radar')}
+              onOpenNewModal={() => setIsNewModalOpen(true)}
+              onLoadSampleData={handleLoadSampleData}
             />
 
             <div className="flex-1 overflow-y-auto p-5 space-y-5 pb-20 md:pb-8">
-              <PipelineTierSection
-                title="Active Builds & Hard Submissions"
-                badge="TIER 1"
-                opportunities={activeOpps}
-                allProjects={projects}
-                focusedId={focusedId}
-                expandedMap={expandedMap}
-                selectedAiOppId={selectedAiOpp?.id || null}
-                viewMode={viewMode}
-                onFocusOpportunity={setSelectedFocusedId}
-                onToggleExpand={(id) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }))}
-                onOpenAskAI={setSelectedAiOpp}
-                onAdvanceStatus={handleAdvanceStatus}
-                onToggleProjectLink={handleToggleProjectLink}
-                onToggleSubTask={handleToggleSubTask}
-                onAddSubTask={handleAddSubTask}
-                onArchive={handleArchive}
-              />
-
-              <PipelineTierSection
-                title="Waitlists & Registration Watch"
-                badge="TIER 2"
-                opportunities={waitlistOpps}
-                allProjects={projects}
-                focusedId={focusedId}
-                expandedMap={expandedMap}
-                selectedAiOppId={selectedAiOpp?.id || null}
-                viewMode={viewMode}
-                onFocusOpportunity={setSelectedFocusedId}
-                onToggleExpand={(id) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }))}
-                onOpenAskAI={setSelectedAiOpp}
-                onAdvanceStatus={handleAdvanceStatus}
-                onToggleProjectLink={handleToggleProjectLink}
-                onToggleSubTask={handleToggleSubTask}
-                onAddSubTask={handleAddSubTask}
-                onArchive={handleArchive}
-              />
-
-              <PipelineTierSection
-                title="Submitted / Pending Verdict"
-                badge="TIER 3"
-                opportunities={submittedOpps}
-                allProjects={projects}
-                focusedId={focusedId}
-                expandedMap={expandedMap}
-                selectedAiOppId={selectedAiOpp?.id || null}
-                viewMode={viewMode}
-                onFocusOpportunity={setSelectedFocusedId}
-                onToggleExpand={(id) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }))}
-                onOpenAskAI={setSelectedAiOpp}
-                onAdvanceStatus={handleAdvanceStatus}
-                onToggleProjectLink={handleToggleProjectLink}
-                onToggleSubTask={handleToggleSubTask}
-                onAddSubTask={handleAddSubTask}
-                onArchive={handleArchive}
-              />
+              {opportunities.length === 0 ? (
+                <div className="p-8 text-center rounded border border-zinc-800/80 bg-[#0d0d10] space-y-3 max-w-xl mx-auto my-12">
+                  <p className="text-xs text-zinc-400">Your pipeline is empty.</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsNewModalOpen(true)}
+                      className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs transition-colors"
+                    >
+                      Add your first opportunity
+                    </button>
+                    {!isLive && !hasSampleData && (
+                      <button
+                        type="button"
+                        onClick={handleLoadSampleData}
+                        className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono text-xs transition-colors"
+                      >
+                        Load sample data
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                [
+                  { title: 'Active Builds & Hard Submissions', badge: 'TIER 1', items: activeOpps },
+                  { title: 'Waitlists & Registration Watch', badge: 'TIER 2', items: waitlistOpps },
+                  { title: 'Submitted / Pending Verdict', badge: 'TIER 3', items: submittedOpps },
+                ].map((tier) => (
+                  <PipelineTierSection
+                    key={tier.badge}
+                    title={tier.title}
+                    badge={tier.badge}
+                    opportunities={tier.items}
+                    allProjects={projects}
+                    focusedId={focusedId}
+                    expandedMap={expandedMap}
+                    selectedAiOppId={selectedAiOpp?.id || null}
+                    viewMode={viewMode}
+                    onFocusOpportunity={setSelectedFocusedId}
+                    onToggleExpand={(id) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }))}
+                    onOpenAskAI={setSelectedAiOpp}
+                    onAdvanceStatus={handleAdvanceStatus}
+                    onToggleProjectLink={handleToggleProjectLink}
+                    onToggleSubTask={handleToggleSubTask}
+                    onAddSubTask={handleAddSubTask}
+                    onArchive={handleArchive}
+                  />
+                ))
+              )}
             </div>
           </>
         )}
@@ -213,15 +217,24 @@ export default function OrbitWorkspace() {
             <RadarView
               radarItems={activeRadarItems}
               projectsMap={projectsMap}
+              isLive={isLive}
+              hasSampleData={hasSampleData}
               onPromoteRadarItem={onPromoteAndFocus}
               onToggleVerifyRadarItem={handleToggleVerifyRadarItem}
+              onLoadSampleData={handleLoadSampleData}
             />
           </div>
         )}
 
         {activeSection === 'arsenal' && (
           <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
-            <ArsenalView projects={projects} onAddProject={handleAddProject} />
+            <ArsenalView
+              projects={projects}
+              isLive={isLive}
+              hasSampleData={hasSampleData}
+              onAddProject={handleAddProject}
+              onLoadSampleData={handleLoadSampleData}
+            />
           </div>
         )}
 
@@ -231,6 +244,9 @@ export default function OrbitWorkspace() {
               userApiKey={userApiKey}
               onUpdateApiKey={setUserApiKey}
               isLive={isLive}
+              hasSampleData={hasSampleData}
+              onLoadSampleData={handleLoadSampleData}
+              onRemoveSampleData={handleRemoveSampleData}
               onResetDemo={handleResetDemo}
             />
           </div>
@@ -242,24 +258,8 @@ export default function OrbitWorkspace() {
         allProjects={projects}
         userApiKey={userApiKey}
         onClose={() => setSelectedAiOpp(null)}
-        onSendMessage={(oppId, userText, assistantText, sources) => {
-          updateOpportunities((prev) =>
-            prev.map((o) => {
-              if (o.id !== oppId) return o;
-              const aiChat = [
-                ...o.aiChat,
-                { id: `msg-${Date.now()}-u`, role: 'user' as const, content: userText, createdAt: 'just now' },
-                { id: `msg-${Date.now()}-a`, role: 'assistant' as const, content: assistantText, createdAt: 'just now', sources },
-              ];
-              return { ...o, aiChat, updatedAt: new Date().toISOString() };
-            })
-          );
-        }}
-        onClearHistory={(oppId) => {
-          updateOpportunities((prev) =>
-            prev.map((o) => (o.id === oppId ? { ...o, aiChat: [] } : o))
-          );
-        }}
+        onSendMessage={handleAddAiMessage}
+        onClearHistory={handleClearAiHistory}
       />
 
       <CommandPalette

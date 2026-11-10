@@ -17,10 +17,14 @@ interface TodayStripProps {
   projectsMap: Record<string, ArsenalProject>;
   focusedId: string | null;
   unreviewedRadarCount: number;
+  isLive?: boolean;
+  hasSampleData?: boolean;
   onFocusOpportunity: (id: string) => void;
   onOpenAskAI: (opp: Opportunity) => void;
   onAdvanceStatus: (id: string) => void;
   onJumpToRadar: () => void;
+  onOpenNewModal?: () => void;
+  onLoadSampleData?: () => void;
 }
 
 export default function TodayStrip({
@@ -28,10 +32,14 @@ export default function TodayStrip({
   projectsMap,
   focusedId,
   unreviewedRadarCount,
+  isLive = false,
+  hasSampleData = false,
   onFocusOpportunity,
   onOpenAskAI,
   onAdvanceStatus,
   onJumpToRadar,
+  onOpenNewModal,
+  onLoadSampleData,
 }: TodayStripProps) {
   // Items in Active or Waitlist due within the next 72 hours
   const urgentItems = opportunities
@@ -67,7 +75,6 @@ export default function TodayStrip({
           </span>
         </div>
 
-        {/* Unreviewed Radar status link */}
         <button
           type="button"
           onClick={onJumpToRadar}
@@ -84,7 +91,31 @@ export default function TodayStrip({
         </button>
       </div>
 
-      {urgentItems.length === 0 ? (
+      {opportunities.length === 0 ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 px-3 rounded bg-zinc-900/40 border border-zinc-800/60 text-xs text-zinc-400 gap-2">
+          <span>No opportunities in your workspace yet.</span>
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenNewModal && (
+              <button
+                type="button"
+                onClick={onOpenNewModal}
+                className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-mono text-[11px] transition-colors"
+              >
+                Add your first opportunity
+              </button>
+            )}
+            {!isLive && !hasSampleData && onLoadSampleData && (
+              <button
+                type="button"
+                onClick={onLoadSampleData}
+                className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono text-[11px] transition-colors"
+              >
+                Load sample data
+              </button>
+            )}
+          </div>
+        </div>
+      ) : urgentItems.length === 0 ? (
         <div className="flex items-center justify-between py-2 px-3 rounded bg-zinc-900/40 border border-zinc-800/60 text-xs text-zinc-400">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -137,7 +168,6 @@ export default function TodayStrip({
                     </h4>
                   </div>
 
-                  {/* Soft colors, no pulse */}
                   <div
                     className={`font-mono text-[11px] tabular-nums whitespace-nowrap shrink-0 flex items-center gap-1 ${
                       isRed

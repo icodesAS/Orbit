@@ -34,6 +34,14 @@ export function useOrbitState() {
     return { pipeline: activePipeline, radarUnreviewed, arsenal: projects.length, urgent72h };
   }, [opportunities, activeRadarItems, projects]);
 
+  const hasSampleData = useMemo(() => {
+    return (
+      opportunities.some((o) => o.isSample) ||
+      projects.some((p) => p.isSample) ||
+      radarDays.some((day) => Array.isArray(day.items) && day.items.some((i: RadarItem) => i.isSample))
+    );
+  }, [opportunities, projects, radarDays]);
+
   const nextCodeNumber = useMemo(() => {
     let max = 0;
     opportunities.forEach((o) => {
@@ -54,8 +62,22 @@ export function useOrbitState() {
     });
   }, [store]);
 
+  const handleLoadSampleData = useCallback(async () => {
+    const nextState = await store.loadSampleData();
+    setOpportunities(nextState.opportunities);
+    setProjects(nextState.projects);
+    setRadarDays(nextState.radarDays);
+  }, [store]);
+
+  const handleRemoveSampleData = useCallback(() => {
+    const nextState = store.removeSampleData();
+    setOpportunities(nextState.opportunities);
+    setProjects(nextState.projects);
+    setRadarDays(nextState.radarDays);
+  }, [store]);
+
   const handleResetDemo = useCallback(() => {
-    const nextState = store.resetDemoData();
+    const nextState = store.loadState();
     setOpportunities(nextState.opportunities);
     setProjects(nextState.projects);
     setRadarDays(nextState.radarDays);
@@ -175,6 +197,7 @@ export function useOrbitState() {
       applicationCopy: item.summary,
       notes: `Promoted from Radar (${todayStr})`,
       sourceRadarDate: todayStr,
+      isSample: Boolean(item.isSample),
       sortOrder: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -236,10 +259,13 @@ export function useOrbitState() {
     userApiKey,
     setUserApiKey,
     isLive,
+    hasSampleData,
     undoAction,
     setUndoAction,
     updateOpportunities,
     handleResetDemo,
+    handleLoadSampleData,
+    handleRemoveSampleData,
     handleCreateOpportunity,
     handleAdvanceStatus,
     handleArchive,

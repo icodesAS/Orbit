@@ -16,8 +16,11 @@ interface RadarViewProps {
   radarItems: RadarItem[];
   projectsMap: Record<string, ArsenalProject>;
   currentDate?: string;
+  isLive?: boolean;
+  hasSampleData?: boolean;
   onPromoteRadarItem: (item: RadarItem) => void;
   onToggleVerifyRadarItem: (id: string) => void;
+  onLoadSampleData?: () => void;
 }
 
 const PRIORITY_HEADINGS: Record<RadarPriority, { title: string; subtitle: string }> = {
@@ -43,10 +46,12 @@ export default function RadarView({
   radarItems,
   projectsMap,
   currentDate,
+  isLive = false,
+  hasSampleData = false,
   onPromoteRadarItem,
   onToggleVerifyRadarItem,
+  onLoadSampleData,
 }: RadarViewProps) {
-  // Track which links user has opened, to enforce "user must open source link first"
   const [openedUrls, setOpenedUrls] = useState<Record<string, boolean>>({});
 
   const displayDate = currentDate || new Date().toLocaleDateString(undefined, {
@@ -86,139 +91,155 @@ export default function RadarView({
         </div>
       </div>
 
-      <div className="space-y-6">
-        {priorities.map((priority) => {
-          const items = radarItems.filter((i) => i.priority === priority);
-          const meta = PRIORITY_HEADINGS[priority];
+      {radarItems.length === 0 ? (
+        <div className="p-8 text-center rounded border border-zinc-800/80 bg-[#0d0d10] space-y-3">
+          <p className="text-xs text-zinc-400">
+            No digest yet. The morning job fills this after setup.
+          </p>
+          {!isLive && !hasSampleData && onLoadSampleData && (
+            <button
+              type="button"
+              onClick={onLoadSampleData}
+              className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono text-xs transition-colors"
+            >
+              Load sample data
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {priorities.map((priority) => {
+            const items = radarItems.filter((i) => i.priority === priority);
+            const meta = PRIORITY_HEADINGS[priority];
 
-          return (
-            <section key={priority} className="space-y-2">
-              <div className="flex items-baseline justify-between gap-2 border-b border-zinc-800/60 pb-1.5">
-                <div>
-                  <h2 className="text-xs font-semibold text-zinc-200 tracking-wide">
-                    {meta.title}
-                  </h2>
-                  <p className="text-[11px] text-zinc-500">{meta.subtitle}</p>
+            return (
+              <section key={priority} className="space-y-2">
+                <div className="flex items-baseline justify-between gap-2 border-b border-zinc-800/60 pb-1.5">
+                  <div>
+                    <h2 className="text-xs font-semibold text-zinc-200 tracking-wide">
+                      {meta.title}
+                    </h2>
+                    <p className="text-[11px] text-zinc-500">{meta.subtitle}</p>
+                  </div>
+                  <span className="font-mono text-[11px] text-zinc-500 tabular-nums">
+                    {items.length} {items.length === 1 ? 'match' : 'matches'}
+                  </span>
                 </div>
-                <span className="font-mono text-[11px] text-zinc-500 tabular-nums">
-                  {items.length} {items.length === 1 ? 'match' : 'matches'}
-                </span>
-              </div>
 
-              {items.length === 0 ? (
-                <div className="p-3 rounded bg-[#0d0d10] border border-zinc-800/60 text-xs text-zinc-500 font-mono">
-                  No opportunities listed in this section today.
-                </div>
-              ) : (
-                <div className="divide-y divide-zinc-800/80 border border-zinc-800/80 rounded bg-[#0d0d10]">
-                  {items.map((item) => {
-                    const deadlineInfo = getDeadlineInfo(item.deadline);
-                    const recProject = item.recommendedProjectId ? projectsMap[item.recommendedProjectId] : null;
-                    const canVerify = item.verified || openedUrls[item.id];
+                {items.length === 0 ? (
+                  <div className="p-3 rounded bg-[#0d0d10] border border-zinc-800/60 text-xs text-zinc-500 font-mono">
+                    No opportunities listed in this section today.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-zinc-800/80 border border-zinc-800/80 rounded bg-[#0d0d10]">
+                    {items.map((item) => {
+                      const deadlineInfo = getDeadlineInfo(item.deadline);
+                      const recProject = item.recommendedProjectId ? projectsMap[item.recommendedProjectId] : null;
+                      const canVerify = item.verified || openedUrls[item.id];
 
-                    return (
-                      <div
-                        key={item.id}
-                        className="p-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:bg-[#121216] transition-colors"
-                      >
-                        <div className="space-y-1.5 flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono text-xs text-zinc-400">
-                              {item.organization}
-                            </span>
-                            <span className="text-zinc-600">·</span>
-                            <h3 className="text-xs font-medium text-zinc-100">
-                              {item.title}
-                            </h3>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenSource(item)}
-                              className="inline-flex items-center gap-1 font-mono text-[11px] text-blue-400 hover:underline cursor-pointer"
-                              title="Open original source URL"
-                            >
-                              <span>Source ({item.source})</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </button>
-                          </div>
-
-                          <p className="text-xs text-zinc-300 leading-relaxed">
-                            {item.summary}
-                          </p>
-
-                          <div className="flex items-center gap-2.5 pt-1 text-[11px] font-mono text-zinc-400 flex-wrap">
-                            <span>TYPE: {item.type}</span>
-                            <span>·</span>
-                            <span>
-                              DEADLINE: {deadlineInfo.relativeLabel} ({deadlineInfo.absoluteLabel})
-                            </span>
-                            {recProject && (
-                              <>
-                                <span>·</span>
-                                <span className="text-blue-300">
-                                  MATCH: {recProject.title}
-                                </span>
-                              </>
-                            )}
-                            <span>·</span>
-                            {/* Verified check: enabled only after user opened source */}
-                            {item.verified ? (
-                              <button
-                                type="button"
-                                onClick={() => onToggleVerifyRadarItem(item.id)}
-                                className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
-                                title="Click to unverify"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>VERIFIED</span>
-                              </button>
-                            ) : canVerify ? (
-                              <button
-                                type="button"
-                                onClick={() => onToggleVerifyRadarItem(item.id)}
-                                className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 transition-colors"
-                                title="Source link opened. Click to mark verified."
-                              >
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                <span>MARK VERIFIED</span>
-                              </button>
-                            ) : (
-                              <span
-                                className="inline-flex items-center gap-1 text-zinc-500 cursor-not-allowed"
-                                title="Open the source link first to enable verification"
-                              >
-                                <ShieldAlert className="w-3.5 h-3.5 text-zinc-600" />
-                                <span>UNVERIFIED (OPEN SOURCE TO VERIFY)</span>
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:bg-[#121216] transition-colors"
+                        >
+                          <div className="space-y-1.5 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-xs text-zinc-400">
+                                {item.organization}
                               </span>
+                              <span className="text-zinc-600">·</span>
+                              <h3 className="text-xs font-medium text-zinc-100">
+                                {item.title}
+                              </h3>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSource(item)}
+                                className="inline-flex items-center gap-1 font-mono text-[11px] text-blue-400 hover:underline cursor-pointer"
+                                title="Open original source URL"
+                              >
+                                <span>Source ({item.source})</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            <p className="text-xs text-zinc-300 leading-relaxed">
+                              {item.summary}
+                            </p>
+
+                            <div className="flex items-center gap-2.5 pt-1 text-[11px] font-mono text-zinc-400 flex-wrap">
+                              <span>TYPE: {item.type}</span>
+                              <span>·</span>
+                              <span>
+                                DEADLINE: {deadlineInfo.relativeLabel} ({deadlineInfo.absoluteLabel})
+                              </span>
+                              {recProject && (
+                                <>
+                                  <span>·</span>
+                                  <span className="text-blue-300">
+                                    MATCH: {recProject.title}
+                                  </span>
+                                </>
+                              )}
+                              <span>·</span>
+                              {item.verified ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleVerifyRadarItem(item.id)}
+                                  className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
+                                  title="Click to unverify"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>VERIFIED</span>
+                                </button>
+                              ) : canVerify ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleVerifyRadarItem(item.id)}
+                                  className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 transition-colors"
+                                  title="Source link opened. Click to mark verified."
+                                >
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  <span>MARK VERIFIED</span>
+                                </button>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-1 text-zinc-500 cursor-not-allowed"
+                                  title="Open the source link first to enable verification"
+                                >
+                                  <ShieldAlert className="w-3.5 h-3.5 text-zinc-600" />
+                                  <span>UNVERIFIED (OPEN SOURCE TO VERIFY)</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {item.promoted ? (
+                              <span className="px-3 py-1 rounded bg-zinc-900 border border-zinc-800 font-mono text-xs text-emerald-400 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Promoted</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => onPromoteRadarItem(item)}
+                                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
+                              >
+                                <span>Track</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                              </button>
                             )}
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          {item.promoted ? (
-                            <span className="px-3 py-1 rounded bg-zinc-900 border border-zinc-800 font-mono text-xs text-emerald-400 flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Promoted</span>
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => onPromoteRadarItem(item)}
-                              className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
-                            >
-                              <span>Track</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

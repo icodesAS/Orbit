@@ -6,7 +6,7 @@ export function createDemoOpportunities(nowMs: number): Opportunity[] {
   const hoursFromNow = (h: number) => new Date(nowMs + h * 3600 * 1000).toISOString();
   const daysFromNow = (d: number) => hoursFromNow(d * 24);
 
-  return [
+  const list: Opportunity[] = [
     // ACTIVE BUILDS (4 items: 1 <=24h red, 2 <=72h amber, 1 >3d grey)
     {
       id: 'opp-sample-101',
@@ -268,4 +268,6 @@ export function createDemoOpportunities(nowMs: number): Opportunity[] {
       aiChat: [],
     },
   ];
+
+  return list.map((o) => ({ ...o, isSample: true }));
 }

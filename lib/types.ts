@@ -38,6 +38,7 @@ export interface Opportunity {
   notes: string | null;
   sourceRadarDate: string | null; // yyyy-mm-dd if promoted from radar
   sortOrder: number;
+  isSample?: boolean;
   createdAt: string;
   updatedAt: string;
   lastActivityAt: string;
@@ -53,6 +54,7 @@ export interface ArsenalProject {
   techStack: string[];
   urls: { label: string; url: string }[];
   usedInCount: number; // denormalized
+  isSample?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +73,7 @@ export interface RadarItem {
   verified: boolean; // only true after user opens source and marks verified
   promoted: boolean; // true when copied to opportunities
   recommendedProjectId?: string;
+  isSample?: boolean;
   createdAt: string;
 }
 
@@ -79,6 +82,7 @@ export interface RadarDay {
   generatedAt: string;
   model: string;
   itemCount: number;
+  isSample?: boolean;
   items: RadarItem[];
 }
 

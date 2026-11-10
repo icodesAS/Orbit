@@ -7,10 +7,19 @@ import { FolderGit2, Plus, ExternalLink } from 'lucide-react';
 
 interface ArsenalViewProps {
   projects: ArsenalProject[];
+  isLive?: boolean;
+  hasSampleData?: boolean;
   onAddProject: (proj: ArsenalProject) => void;
+  onLoadSampleData?: () => void;
 }
 
-export default function ArsenalView({ projects, onAddProject }: ArsenalViewProps) {
+export default function ArsenalView({
+  projects,
+  isLive = false,
+  hasSampleData = false,
+  onAddProject,
+  onLoadSampleData,
+}: ArsenalViewProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [contextBlurb, setContextBlurb] = useState('');
@@ -142,53 +151,79 @@ export default function ArsenalView({ projects, onAddProject }: ArsenalViewProps
         </form>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {projects.map((project) => (
-          <div
-            key={project.id}
-            className="p-4 rounded bg-[#0e0e12] border border-zinc-800/90 flex flex-col justify-between gap-4"
-          >
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="font-mono text-sm font-semibold text-blue-300">
-                  {project.title}
-                </h3>
-                <span className="font-mono text-[11px] text-zinc-400 tabular-nums">
-                  linked in {project.usedInCount} tracks
-                </span>
-              </div>
-              <p className="text-xs text-zinc-200 font-medium">
-                {project.description}
-              </p>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                {project.contextBlurb}
-              </p>
-            </div>
-
-            <div className="pt-3 border-t border-zinc-800/80 space-y-2">
-              <div className="font-mono text-[11px] text-zinc-400">
-                STACK: {project.techStack.join(' · ')}
-              </div>
-              {project.urls.length > 0 && (
-                <div className="flex items-center gap-3">
-                  {project.urls.map((u) => (
-                    <a
-                      key={u.label}
-                      href={u.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-mono text-[11px] text-blue-400 hover:underline"
-                    >
-                      <span>{u.label}</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
+      {projects.length === 0 && !showForm ? (
+        <div className="p-8 text-center rounded border border-zinc-800/80 bg-[#0e0e12] space-y-3">
+          <p className="text-xs text-zinc-400">
+            No flagship projects in your Arsenal yet.
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs transition-colors"
+            >
+              Add your first project
+            </button>
+            {!isLive && !hasSampleData && onLoadSampleData && (
+              <button
+                type="button"
+                onClick={onLoadSampleData}
+                className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono text-xs transition-colors"
+              >
+                Load sample data
+              </button>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map((project) => (
+            <div
+              key={project.id}
+              className="p-4 rounded bg-[#0e0e12] border border-zinc-800/90 flex flex-col justify-between gap-4"
+            >
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-mono text-sm font-semibold text-blue-300">
+                    {project.title}
+                  </h3>
+                  <span className="font-mono text-[11px] text-zinc-400 tabular-nums">
+                    linked in {project.usedInCount} tracks
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-200 font-medium">
+                  {project.description}
+                </p>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  {project.contextBlurb}
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-zinc-800/80 space-y-2">
+                <div className="font-mono text-[11px] text-zinc-400">
+                  STACK: {project.techStack.join(' · ')}
+                </div>
+                {project.urls.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    {project.urls.map((u) => (
+                      <a
+                        key={u.label}
+                        href={u.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-mono text-[11px] text-blue-400 hover:underline"
+                      >
+                        <span>{u.label}</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

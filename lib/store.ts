@@ -1,5 +1,4 @@
 import { ArsenalProject, Opportunity, RadarDay, SettingsProfile } from './types';
-import { createInitialDemoData } from '@/demo/demoData';
 import { DEFAULT_GEMINI_MODEL } from './config';
 
 const STORAGE_KEYS = {
@@ -7,7 +6,6 @@ const STORAGE_KEYS = {
   PROJECTS: 'orbit_demo_v1_projects',
   RADAR_DAYS: 'orbit_demo_v1_radardays',
   SETTINGS: 'orbit_demo_v1_settings',
-  INITIALIZED_AT: 'orbit_demo_v1_initialized_at',
 };
 
 export interface OrbitStoreState {
@@ -25,7 +23,8 @@ export interface OrbitDataStore {
   saveProjects: (projs: ArsenalProject[]) => void;
   saveRadarDays: (days: RadarDay[]) => void;
   saveSettings: (settings: SettingsProfile) => void;
-  resetDemoData: () => OrbitStoreState;
+  loadSampleData: () => Promise<OrbitStoreState>;
+  removeSampleData: () => OrbitStoreState;
 }
 
 function getDefaultSettings(): SettingsProfile {
@@ -41,16 +40,18 @@ class DemoStore implements OrbitDataStore {
     return false;
   }
 
+  // Default workspace starts completely EMPTY
   loadState(): OrbitStoreState {
+    const defaultState: OrbitStoreState = {
+      opportunities: [],
+      projects: [],
+      radarDays: [],
+      settings: getDefaultSettings(),
+      isLive: false,
+    };
+
     if (typeof window === 'undefined') {
-      const initial = createInitialDemoData();
-      return {
-        opportunities: initial.opportunities,
-        projects: initial.projects,
-        radarDays: initial.radarDays,
-        settings: getDefaultSettings(),
-        isLive: false,
-      };
+      return defaultState;
     }
 
     try {
@@ -59,20 +60,16 @@ class DemoStore implements OrbitDataStore {
       const storedRadar = localStorage.getItem(STORAGE_KEYS.RADAR_DAYS);
       const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
 
-      if (storedOpps && storedProjs && storedRadar) {
-        return {
-          opportunities: JSON.parse(storedOpps),
-          projects: JSON.parse(storedProjs),
-          radarDays: JSON.parse(storedRadar),
-          settings: storedSettings ? JSON.parse(storedSettings) : getDefaultSettings(),
-          isLive: false,
-        };
-      }
+      return {
+        opportunities: storedOpps ? JSON.parse(storedOpps) : [],
+        projects: storedProjs ? JSON.parse(storedProjs) : [],
+        radarDays: storedRadar ? JSON.parse(storedRadar) : [],
+        settings: storedSettings ? JSON.parse(storedSettings) : getDefaultSettings(),
+        isLive: false,
+      };
     } catch {
-      // Fallback on parse failure
+      return defaultState;
     }
-
-    return this.resetDemoData();
   }
 
   saveOpportunities(opps: Opportunity[]): void {
@@ -111,70 +108,93 @@ class DemoStore implements OrbitDataStore {
     }
   }
 
-  resetDemoData(): OrbitStoreState {
-    const nowMs = Date.now();
-    const initial = createInitialDemoData(nowMs);
-    const settings = getDefaultSettings();
+  // Opt-in sample data loader via dynamic import
+  async loadSampleData(): Promise<OrbitStoreState> {
+    const { createInitialDemoData } = await import('@/demo/demoData');
+    const sample = createInitialDemoData(Date.now());
+    const currentState = this.loadState();
 
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(STORAGE_KEYS.OPPORTUNITIES, JSON.stringify(initial.opportunities));
-        localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(initial.projects));
-        localStorage.setItem(STORAGE_KEYS.RADAR_DAYS, JSON.stringify(initial.radarDays));
-        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-        localStorage.setItem(STORAGE_KEYS.INITIALIZED_AT, String(nowMs));
-      } catch {
-        // Ignore quota errors
-      }
-    }
+    const existingOppIds = new Set(currentState.opportunities.map((o) => o.id));
+    const newOpps = [
+      ...currentState.opportunities,
+      ...sample.opportunities.filter((o) => !existingOppIds.has(o.id)),
+    ];
+
+    const existingProjIds = new Set(currentState.projects.map((p) => p.id));
+    const newProjs = [
+      ...currentState.projects,
+      ...sample.projects.filter((p) => !existingProjIds.has(p.id)),
+    ];
+
+    const newRadar = sample.radarDays;
+
+    this.saveOpportunities(newOpps);
+    this.saveProjects(newProjs);
+    this.saveRadarDays(newRadar);
 
     return {
-      opportunities: initial.opportunities,
-      projects: initial.projects,
-      radarDays: initial.radarDays,
-      settings,
+      opportunities: newOpps,
+      projects: newProjs,
+      radarDays: newRadar,
+      settings: currentState.settings,
+      isLive: false,
+    };
+  }
+
+  // Removes ONLY items where isSample === true; custom created items remain intact
+  removeSampleData(): OrbitStoreState {
+    const currentState = this.loadState();
+    const cleanOpps = currentState.opportunities.filter((o) => !o.isSample);
+    const cleanProjs = currentState.projects.filter((p) => !p.isSample);
+    const cleanRadar = currentState.radarDays
+      .filter((d) => !d.isSample)
+      .map((day) => ({
+        ...day,
+        items: day.items.filter((i) => !i.isSample),
+      }))
+      .filter((day) => day.items.length > 0);
+
+    this.saveOpportunities(cleanOpps);
+    this.saveProjects(cleanProjs);
+    this.saveRadarDays(cleanRadar);
+
+    return {
+      opportunities: cleanOpps,
+      projects: cleanProjs,
+      radarDays: cleanRadar,
+      settings: currentState.settings,
       isLive: false,
     };
   }
 }
 
-// LiveStore (Firestore) stub for Phase G
+// LiveStore (Firestore) stub for Phase G - sample feature hidden and never loads sample data
 class LiveStoreStub implements OrbitDataStore {
-  private demoFallback = new DemoStore();
-
   isLive(): boolean {
     return true;
   }
 
   loadState(): OrbitStoreState {
-    // Phase G will implement Firestore live sync. For now, fallback cleanly.
     return {
-      ...this.demoFallback.loadState(),
+      opportunities: [],
+      projects: [],
+      radarDays: [],
+      settings: getDefaultSettings(),
       isLive: true,
     };
   }
 
-  saveOpportunities(opps: Opportunity[]): void {
-    this.demoFallback.saveOpportunities(opps);
+  saveOpportunities(): void {}
+  saveProjects(): void {}
+  saveRadarDays(): void {}
+  saveSettings(): void {}
+
+  async loadSampleData(): Promise<OrbitStoreState> {
+    return this.loadState();
   }
 
-  saveProjects(projs: ArsenalProject[]): void {
-    this.demoFallback.saveProjects(projs);
-  }
-
-  saveRadarDays(days: RadarDay[]): void {
-    this.demoFallback.saveRadarDays(days);
-  }
-
-  saveSettings(settings: SettingsProfile): void {
-    this.demoFallback.saveSettings(settings);
-  }
-
-  resetDemoData(): OrbitStoreState {
-    return {
-      ...this.demoFallback.resetDemoData(),
-      isLive: true,
-    };
+  removeSampleData(): OrbitStoreState {
+    return this.loadState();
   }
 }
 

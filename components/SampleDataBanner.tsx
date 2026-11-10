@@ -1,18 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Database, RotateCcw } from 'lucide-react';
+import { Database, Trash2 } from 'lucide-react';
 
 interface SampleDataBannerProps {
   isLive: boolean;
-  onResetDemo: () => void;
+  hasSampleData: boolean;
+  onRemoveSampleData: () => void;
 }
 
 export default function SampleDataBanner({
   isLive,
-  onResetDemo,
+  hasSampleData,
+  onRemoveSampleData,
 }: SampleDataBannerProps) {
-  if (isLive) return null;
+  // Never show in Live mode or when no sample items exist
+  if (isLive || !hasSampleData) return null;
 
   return (
     <div
@@ -26,18 +29,18 @@ export default function SampleDataBanner({
           SAMPLE DATA
         </span>
         <span className="text-amber-200/90 truncate text-[11px]">
-          Demo Mode active. All opportunities and projects are fictional samples saved to localStorage.
+          Sample data is currently loaded in your workspace.
         </span>
       </div>
 
       <button
         type="button"
-        onClick={onResetDemo}
-        title="Reset all demo data back to default SAMPLE state"
+        onClick={onRemoveSampleData}
+        title="Remove only sample data items (custom created items are preserved)"
         className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 hover:text-white border border-amber-500/40 text-[11px] font-mono transition-colors shrink-0 ml-3"
       >
-        <RotateCcw className="w-3 h-3 text-amber-300" />
-        <span>Reset Demo Data</span>
+        <Trash2 className="w-3 h-3 text-amber-300" />
+        <span>Remove sample data</span>
       </button>
     </div>
   );

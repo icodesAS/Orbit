@@ -149,7 +149,8 @@ export function createDemoRadarDays(nowMs: number): RadarDay[] {
       generatedAt: new Date(nowMs).toISOString(),
       model: 'sample-data',
       itemCount: items.length,
-      items,
+      isSample: true,
+      items: items.map((i) => ({ ...i, isSample: true })),
     },
   ];
 }
