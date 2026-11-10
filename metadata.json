@@ -1,0 +1,6 @@
+{
+  "name": "Orbit — Autonomous Opportunity & Pipeline Command Center",
+  "description": "High-density, keyboard-first pipeline management and opportunity radar for AI engineers and builders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
