@@ -1,4 +1,4 @@
-HISTORICAL. First build prompt only. Do not follow.”
+ARCHIVED. Ignore this file. Do not follow. AGENTS.md and docs/07 win.
 # Google AI Studio — System Instructions & First Build Prompt
 
 Copy the System Instructions into the system prompt / custom instructions field.

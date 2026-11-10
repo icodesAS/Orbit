@@ -2,12 +2,12 @@
 
 ## Addressed Risks
 
-- Per-user isolation: Firestore rules restrict all access to users/{uid}/**.
-- Key handling: Gemini keys never stored in the repository. BYOK only.
-- Radar immutability: Daily documents use date as ID and are treated as write-once.
+- Per-user isolation: firestore.rules at repo root restrict access per path under users/{uid}. No single catch-all document=** rule (Firestore ORs matching rules).
+- Key handling: Gemini keys never stored in the repository.
+- Radar immutability: Daily documents use date as ID. Users may change only promoted and verified.
 - Deduplication: urlHash prevents the same opportunity appearing across multiple mornings.
-- Cost control: 9 AM job runs only with the user’s own key (or is disabled in Demo mode).
-- No confirmation dialogs for destructive actions: Replaced by 5-second Undo toast.
+- Cost control: Morning job (later) runs on the user's own GitHub Actions with their own secret, or is disabled in Demo mode.
+- No confirmation dialogs for archive/status: Replaced by 5-second Undo toast. Track uses a deadline-confirm form.
 
 ## Remaining Loopholes & Mitigations
 
@@ -17,11 +17,11 @@ Risk: If the key is stored in localStorage or IndexedDB, XSS can exfiltrate it.
 
 Mitigation:
 
-- Ask AI: the key stays in browser memory only.
-- 9 AM radar job: the key is stored on the server as a GitHub Actions secret (or Cloud Function secret). A browser-only key cannot work because the job runs while the browser is closed.
+- Ask AI: user pastes the key in Settings. It stays in browser memory only. It is sent with each request to our route and is never stored or logged.
+- Key order for Ask AI: user key, then server env key, then demo fallback.
+- 9 AM radar job (later): the key is a GitHub Actions secret on the user's own fork. A browser-only key cannot work because the job runs while the browser is closed.
 - Strongly recommend users create a restricted API key (HTTP referrer or IP limited if possible).
 - Document clearly that Demo mode needs no key.
-- Future: support Firebase Secret Manager or user-owned Cloud Function proxy.
 
 ### 2. Optimistic Updates + Multi-device
 
@@ -39,9 +39,9 @@ Risk: Incorrect deadlines, eligibility, or dead links.
 
 Mitigation (already required):
 
-- Every radar item shows Source link + Verify badge.
-- Never auto-promote. User must explicitly “Track”.
-- Allow manual deadline override after promotion.
+- Every radar item shows Source link + Mark verified (enabled only after the source was opened).
+- Never auto-promote. User must explicitly Track.
+- Track shows a small form to confirm the deadline (prefilled, editable).
 
 ### 4. Radar Job Cost & Abuse
 
@@ -53,6 +53,7 @@ Mitigation:
 - The job runs on the user's own GitHub Actions with their own secret, so a fork never uses the owner's key.
 - In pure open-source forks, the job is optional / self-hosted only.
 - Add a clear cost warning in README.
+- Not in this build pass.
 
 ### 5. PWA / FCM on iOS
 
@@ -61,7 +62,8 @@ Risk: Push only works after “Add to Home Screen”. Users may miss notificatio
 Mitigation:
 
 - Detect standalone mode and gently prompt once.
-- Fall back to in-app badges and the Today strip.
+- Fall back to in-app badges and the Today page.
+- Not in this build pass.
 
 ### 6. Demo Mode Data Leakage
 
@@ -69,8 +71,9 @@ Risk: Accidental write to real Firebase while in Demo mode.
 
 Mitigation:
 
-- Demo mode must short-circuit all Firebase imports and use only local state + fake JSON.
-- Feature flag checked at the highest level.
+- Live only if Firebase env vars exist, else Demo.
+- Demo saves to localStorage and must not write to Firestore.
+- Check at the highest level before any Firebase import/use.
 
 ### 7. urlHash Collisions
 
@@ -89,13 +92,14 @@ Mitigation:
 
 - .env.example only.
 - Pre-commit or CI check for common secret patterns.
-- Security rules file is part of the reviewed core.
+- firestore.rules at repo root is part of the reviewed core. Do not paste it into the Settings UI.
 
 ### 9. GitHub Actions can start late and secrets must never be printed in logs.
 
 ## Recommended Immediate Hardening
 
-- Never persist Gemini API key in localStorage without encryption + clear warning.
-- Make Demo mode the default when no Firebase config is present.
-- Add verified: boolean and force manual confirmation of deadlines on promotion.
-- Document the exact Firestore security rules in the README and keep them minimal.
+- Never persist the Gemini API key (memory only; never localStorage; never logs).
+- Make Demo mode the default when no Firebase env vars are present.
+- verified starts false. Mark verified only after the source link was opened.
+- Track always confirms deadline in a small form.
+- Document firestore.rules in the README by pointing at the file, not by duplicating it in the UI.

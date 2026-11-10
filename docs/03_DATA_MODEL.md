@@ -1,5 +1,7 @@
 # Orbit — Data Model & Firestore Structure
 
+Canonical security rules live in repo-root firestore.rules. Do not render that file in the app UI.
+
 ## Collection Layout
 
 ```
@@ -80,6 +82,8 @@ users/{uid}/
 }
 ```
 
+Demo Arsenal rows are fictional SAMPLE projects. Real projects are added by the user, not shipped in demo data or public docs.
+
 ### radarDays/{yyyy-mm-dd}
 
 ```
@@ -103,7 +107,12 @@ users/{uid}/
   summary: string
   deadline: string | null             // raw from Gemini, needs verify
   source: string
-  verified: boolean                   // user or system flag
+  priority: "1A" | "1B" | "1C" | "2"
+  // 1A campus ambassador/lead roles
+  // 1B residencies/fellowships/research
+  // 1C hackathons/internships
+  // 2 free credits/perks
+  verified: boolean                   // true only after user opened source then marked verified
   promoted: boolean                   // whether copied to opportunities
   createdAt: Timestamp
 }
@@ -111,15 +120,26 @@ users/{uid}/
 
 ## Critical Rules
 
-- Radar is immutable after creation. Never update radar items except promoted flag if needed.
-- Promoting a radar item copies data into a new opportunities document. Radar history stays pure.
+- Radar content is read-only. The only fields users may change are promoted and verified.
+- Verified: user must open the source link first, then click Mark verified. Demo data must not ship as already verified.
+- Track is allowed anytime. It shows a small form to confirm the deadline (prefilled, editable), then copies data into a new opportunities document. Radar history stays otherwise pure.
 - Use date string as radarDays document ID → job is idempotent.
 - Always store urlHash for cross-day deduplication.
-- The radar job sends the last 14 days of urlHash values with each request, and also removes duplicates in code afterward.
+- The radar job (later pass) sends the last 14 days of urlHash values with each request, and also removes duplicates in code afterward.
 - Denormalize progress counters so list views require no extra reads.
-- Every radar item must display a Source link + Verify badge (Gemini can hallucinate dates/eligibility).
+- Every radar item must display a Source link + Verify control (Gemini can hallucinate dates/eligibility).
+- Times in the UI use the user's local timezone.
+
+## Demo vs Live
+
+- Live only if Firebase env vars exist, else Demo.
+- Demo saves to localStorage and must short-circuit Firestore.
+- Live uses Firestore.
+- Demo data lives only in /demo/demoData.ts and is labelled SAMPLE everywhere.
 
 ## Security Rules (Core Intent)
+
+The file firestore.rules in the repo root is the source of truth. Content:
 
 ```
 rules_version = '2';
@@ -154,8 +174,8 @@ service cloud.firestore {
 }
 ```
 
-The server job writes radar data using admin credentials, which bypass these rules. Users cannot edit radar history.
+The server job writes radar data using admin credentials, which bypass these rules. Users cannot edit radar history except promoted and verified.
 
 - No public read access.
 - No cross-user access.
-- Demo mode bypasses Firestore entirely.
+- Demo mode does not use Firestore.
