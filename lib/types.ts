@@ -2,6 +2,8 @@ export type OpportunityType = 'hackathon' | 'fellowship' | 'ambassador' | 'waitl
 
 export type OpportunityStatus = 'active' | 'waitlist' | 'submitted' | 'archived';
 
+export type RadarPriority = '1A' | '1B' | '1C' | '2';
+
 export interface SubTask {
   id: string;
   title: string;
@@ -20,7 +22,7 @@ export interface AIChatMessage {
 
 export interface Opportunity {
   id: string;
-  code: string; // e.g., ORB-01
+  code: string; // e.g. ORB-01
   title: string;
   organization: string;
   type: OpportunityType;
@@ -31,10 +33,10 @@ export interface Opportunity {
   tasksTotal: number; // denormalized
   projectIds: string[]; // Arsenal links
   url: string | null;
-  urlHash: string;
+  urlHash: string; // for deduplication
   applicationCopy: string | null;
   notes: string | null;
-  sourceRadarDate: string | null;
+  sourceRadarDate: string | null; // yyyy-mm-dd if promoted from radar
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -47,10 +49,10 @@ export interface ArsenalProject {
   id: string;
   title: string;
   description: string;
-  contextBlurb: string;
+  contextBlurb: string; // ~100 words, plain English, used for radar matching
   techStack: string[];
   urls: { label: string; url: string }[];
-  usedInCount: number;
+  usedInCount: number; // denormalized
   createdAt: string;
   updatedAt: string;
 }
@@ -65,10 +67,25 @@ export interface RadarItem {
   summary: string;
   deadline: string | null;
   source: string;
-  verified: boolean;
-  promoted: boolean;
+  priority: RadarPriority;
+  verified: boolean; // only true after user opens source and marks verified
+  promoted: boolean; // true when copied to opportunities
   recommendedProjectId?: string;
   createdAt: string;
+}
+
+export interface RadarDay {
+  date: string; // yyyy-mm-dd
+  generatedAt: string;
+  model: string;
+  itemCount: number;
+  items: RadarItem[];
+}
+
+export interface SettingsProfile {
+  geminiModel: string;
+  timezone: string;
+  updatedAt: string;
 }
 
 export interface UndoAction {

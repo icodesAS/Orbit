@@ -23,6 +23,7 @@ interface SidebarProps {
     arsenal: number;
     urgent72h: number;
   };
+  isLive?: boolean;
   onOpenCommandPalette: () => void;
   onOpenNewModal: () => void;
   onOpenShortcutsModal: () => void;
@@ -32,6 +33,7 @@ export default function Sidebar({
   activeSection,
   onSelectSection,
   counts,
+  isLive = false,
   onOpenCommandPalette,
   onOpenNewModal,
   onOpenShortcutsModal,
@@ -55,7 +57,7 @@ export default function Sidebar({
     },
     {
       id: 'radar',
-      label: '9AM Radar',
+      label: 'Radar',
       shortcut: '2',
       icon: Radar,
       count: counts.radarUnreviewed,
@@ -77,7 +79,6 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Desktop Left Icon-Only Sidebar that expands on hover */}
       <motion.aside
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -91,7 +92,6 @@ export default function Sidebar({
         className="hidden md:flex flex-col justify-between h-screen bg-[#0c0c0e] border-r border-zinc-800/80 select-none shrink-0 z-30 overflow-hidden"
         aria-label="Primary Navigation"
       >
-        {/* Top Brand + Quick Action */}
         <div className="flex flex-col">
           <div className="h-12 flex items-center px-3.5 border-b border-zinc-800/80 gap-3">
             <div className="w-7 h-7 rounded bg-blue-600/15 border border-blue-500/40 flex items-center justify-center shrink-0 text-blue-400 font-mono font-bold text-xs tracking-tighter">
@@ -105,13 +105,18 @@ export default function Sidebar({
               <span className="font-semibold text-sm tracking-tight text-zinc-100">
                 Orbit
               </span>
-              <span className="font-mono text-[10px] text-zinc-500 tabular-nums">
-                DEMO
+              <span
+                className={`font-mono text-[10px] tabular-nums px-1.5 py-0.2 rounded border ${
+                  isLive
+                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                    : 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                }`}
+              >
+                {isLive ? 'LIVE' : 'DEMO'}
               </span>
             </motion.div>
           </div>
 
-          {/* Quick New Opportunity Trigger */}
           <div className="p-2 border-b border-zinc-800/60">
             <button
               type="button"
@@ -133,7 +138,6 @@ export default function Sidebar({
             </button>
           </div>
 
-          {/* Main Navigation Links */}
           <nav className="p-2 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -174,7 +178,6 @@ export default function Sidebar({
           </nav>
         </div>
 
-        {/* Bottom Command & Hotkey Helpers */}
         <div className="p-2 border-t border-zinc-800/80 space-y-1">
           <button
             type="button"
@@ -212,7 +215,6 @@ export default function Sidebar({
         </div>
       </motion.aside>
 
-      {/* Mobile Triage-First Bottom Bar */}
       <nav
         aria-label="Mobile Navigation"
         className="md:hidden fixed bottom-0 inset-x-0 h-13 bg-[#0c0c0e]/95 backdrop-blur border-t border-zinc-800/90 flex items-center justify-around px-2 z-30"

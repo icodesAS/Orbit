@@ -56,7 +56,7 @@ export default function TodayStrip({
         <div className="flex items-center gap-2.5 text-xs">
           <span className="font-semibold text-zinc-100 tracking-tight flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-amber-400" />
-            Today Strip — 72h Horizon
+            Today Horizon (72h)
           </span>
           <span className="text-zinc-600" aria-hidden="true">
             ·
@@ -67,14 +67,14 @@ export default function TodayStrip({
           </span>
         </div>
 
-        {/* Unreviewed 9:00 AM Radar status bar */}
+        {/* Unreviewed Radar status link */}
         <button
           type="button"
           onClick={onJumpToRadar}
           className="flex items-center gap-2 text-xs text-zinc-400 hover:text-zinc-100 transition-colors self-start lg:self-auto group whitespace-nowrap shrink-0"
         >
           <Radar className="w-3.5 h-3.5 text-blue-400" />
-          <span>Morning 09:00 Radar</span>
+          <span>Daily Radar</span>
           <span className="text-zinc-600" aria-hidden="true">
             ·
           </span>
@@ -137,11 +137,11 @@ export default function TodayStrip({
                     </h4>
                   </div>
 
-                  {/* Deadline heat indicator (Red <=24h with slow pulse, Amber <=72h) */}
+                  {/* Soft colors, no pulse */}
                   <div
                     className={`font-mono text-[11px] tabular-nums whitespace-nowrap shrink-0 flex items-center gap-1 ${
                       isRed
-                        ? 'text-rose-400 font-semibold animate-pulse'
+                        ? 'text-rose-400 font-semibold'
                         : 'text-amber-400 font-medium'
                     }`}
                     title={`Due ${deadlineInfo.absoluteLabel}`}
@@ -168,7 +168,6 @@ export default function TodayStrip({
                     )}
                   </div>
 
-                  {/* Quick inline actions on Today card */}
                   <div
                     className="flex items-center gap-1 shrink-0"
                     onClick={(e) => e.stopPropagation()}

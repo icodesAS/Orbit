@@ -7,7 +7,9 @@ import {
   OpportunityType,
   ArsenalProject,
 } from '@/lib/types';
-import { X, Plus } from 'lucide-react';
+import { generateId } from '@/lib/id';
+import { computeUrlHash } from '@/lib/hash';
+import { X, Plus, Globe } from 'lucide-react';
 
 interface NewOpportunityModalProps {
   isOpen: boolean;
@@ -31,12 +33,10 @@ export default function NewOpportunityModal({
   const [daysUntilDeadline, setDaysUntilDeadline] = useState('2');
   const [url, setUrl] = useState('');
   const [applicationCopy, setApplicationCopy] = useState('');
-  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([
-    'proj-patchtree',
-  ]);
-  const [initialTask, setInitialTask] = useState(
-    'Draft technical abstract & benchmark reproduction'
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>(() =>
+    projects[0] ? [projects[0].id] : []
   );
+  const [initialTask, setInitialTask] = useState('Review submission requirements and deliverables');
 
   if (!isOpen) return null;
 
@@ -55,9 +55,11 @@ export default function NewOpportunityModal({
       now.getTime() + parseFloat(daysUntilDeadline || '5') * 24 * 3600 * 1000
     );
 
+    const trimmedUrl = url.trim();
+
     const newOpp: Opportunity = {
-      id: `opp-${Date.now()}`,
-      code: `ORB-${nextCodeNumber}`,
+      id: generateId('opp'),
+      code: `ORB-${String(nextCodeNumber).padStart(2, '0')}`,
       title: title.trim(),
       organization: organization.trim() || 'Independent',
       type,
@@ -67,11 +69,10 @@ export default function NewOpportunityModal({
       tasksDone: 0,
       tasksTotal: initialTask.trim() ? 1 : 0,
       projectIds: selectedProjectIds,
-      url: url.trim() || null,
-      urlHash: `sha256-${Math.random().toString(16).slice(2, 10)}`,
+      url: trimmedUrl || null,
+      urlHash: computeUrlHash(trimmedUrl || `https://orbit.local/${Date.now()}`),
       applicationCopy:
-        applicationCopy.trim() ||
-        'Technical submission anchored by linked Arsenal repositories.',
+        applicationCopy.trim() || 'Technical submission anchored by linked Arsenal repositories.',
       notes: null,
       sourceRadarDate: null,
       sortOrder: 0,
@@ -81,7 +82,7 @@ export default function NewOpportunityModal({
       tasks: initialTask.trim()
         ? [
             {
-              id: `t-${Date.now()}-1`,
+              id: generateId('t'),
               title: initialTask.trim(),
               done: false,
               sortOrder: 1,
@@ -95,6 +96,7 @@ export default function NewOpportunityModal({
     onCreate(newOpp);
     setTitle('');
     setOrganization('');
+    setUrl('');
     onClose();
   };
 
@@ -113,7 +115,7 @@ export default function NewOpportunityModal({
         <div className="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-blue-400">
-              ORB-{nextCodeNumber}
+              ORB-{String(nextCodeNumber).padStart(2, '0')}
             </span>
             <h2 className="text-sm font-semibold text-zinc-100">
               New Opportunity Track
@@ -140,7 +142,7 @@ export default function NewOpportunityModal({
                 autoFocus
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Solana AI Agentic Hackathon"
+                placeholder="e.g. Systems Builder Sprint"
                 className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none"
               />
             </div>
@@ -150,10 +152,24 @@ export default function NewOpportunityModal({
                 type="text"
                 value={organization}
                 onChange={(e) => setOrganization(e.target.value)}
-                placeholder="e.g., Solana Foundation"
+                placeholder="e.g. Open Systems Lab"
                 className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-zinc-400 mb-1 flex items-center gap-1">
+              <Globe className="w-3 h-3 text-zinc-500" />
+              <span>Source or Program URL</span>
+            </label>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/apply"
+              className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none font-mono text-[11px]"
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -186,9 +202,7 @@ export default function NewOpportunityModal({
             </div>
 
             <div>
-              <label className="block text-zinc-400 mb-1">
-                Deadline Horizon
-              </label>
+              <label className="block text-zinc-400 mb-1">Deadline Horizon</label>
               <select
                 value={daysUntilDeadline}
                 onChange={(e) => setDaysUntilDeadline(e.target.value)}
@@ -202,35 +216,33 @@ export default function NewOpportunityModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-zinc-400 mb-1">
-              Link Flagship Projects from Arsenal
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {projects.map((p) => {
-                const active = selectedProjectIds.includes(p.id);
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => toggleProject(p.id)}
-                    className={`px-2.5 py-1.5 rounded font-mono text-xs border transition-colors ${
-                      active
-                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
-                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    {p.title}
-                  </button>
-                );
-              })}
+          {projects.length > 0 && (
+            <div>
+              <label className="block text-zinc-400 mb-1">Link Arsenal Projects</label>
+              <div className="flex flex-wrap gap-2">
+                {projects.map((p) => {
+                  const active = selectedProjectIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggleProject(p.id)}
+                      className={`px-2.5 py-1.5 rounded font-mono text-xs border transition-colors ${
+                        active
+                          ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
+                          : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      {p.title}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
-            <label className="block text-zinc-400 mb-1">
-              First Execution Sub-Task
-            </label>
+            <label className="block text-zinc-400 mb-1">First Sub-Task</label>
             <input
               type="text"
               value={initialTask}
@@ -240,14 +252,12 @@ export default function NewOpportunityModal({
           </div>
 
           <div>
-            <label className="block text-zinc-400 mb-1">
-              Application Pitch / Notes
-            </label>
+            <label className="block text-zinc-400 mb-1">Application Pitch / Notes</label>
             <textarea
               rows={2}
               value={applicationCopy}
               onChange={(e) => setApplicationCopy(e.target.value)}
-              placeholder="Core technical thesis or prize track target..."
+              placeholder="Core thesis or application focus..."
               className="w-full bg-[#0a0a0d] border border-zinc-800 focus:border-blue-500 rounded px-3 py-2 text-zinc-100 focus:outline-none"
             />
           </div>

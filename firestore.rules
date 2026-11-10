@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{userId} {
+      match /opportunities/{oppId}/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      match /projects/{projectId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /settings/{settingId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /radarDays/{day} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+      match /radarDays/{day}/items/{itemId} {
+        allow read: if isOwner(userId);
+        allow create, delete: if false;
+        allow update: if isOwner(userId)
+          && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['promoted', 'verified']);
+      }
+    }
+  }
+}

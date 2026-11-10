@@ -1,80 +1,112 @@
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
+import { DEFAULT_GEMINI_MODEL } from '@/lib/config';
+
+interface LinkedProjectInput {
+  title: string;
+  techStack?: string[];
+  contextBlurb?: string;
+}
+
+interface OpportunityInput {
+  code?: string;
+  title?: string;
+  organization?: string;
+  type?: string;
+  status?: string;
+  deadline?: string | null;
+  url?: string | null;
+  applicationCopy?: string | null;
+  notes?: string | null;
+  tasksDone?: number;
+  tasksTotal?: number;
+  tasks?: { done: boolean; title: string }[];
+}
+
+interface ChatMessageInput {
+  role: string;
+  content: string;
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { prompt, opportunity, linkedProjects, history } = body;
+    const { prompt, opportunity, linkedProjects, history, userKey } = body;
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Key order: 1) user memory key (from body or header), 2) server env, 3) demo fallback
+    // Never log or store the key
+    const rawUserKey = (typeof userKey === 'string' && userKey.trim()) || req.headers.get('x-gemini-key')?.trim();
+    const serverEnvKey = process.env.GEMINI_API_KEY?.trim();
+    const apiKey = (rawUserKey && rawUserKey !== 'MY_GEMINI_API_KEY' ? rawUserKey : null) ||
+      (serverEnvKey && serverEnvKey !== 'MY_GEMINI_API_KEY' ? serverEnvKey : null);
 
-    // Build rich tactical system instruction scoped strictly to this opportunity and its linked Arsenal projects
-    const projectsContext = Array.isArray(linkedProjects) && linkedProjects.length > 0
-      ? linkedProjects
-          .map(
-            (p: { title: string; techStack?: string[]; contextBlurb?: string }) =>
-              `- **${p.title}** (${(p.techStack || []).join(', ')}): ${p.contextBlurb}`
-          )
+    const modelName = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+
+    const opp = (opportunity || {}) as OpportunityInput;
+    const projects = Array.isArray(linkedProjects) ? (linkedProjects as LinkedProjectInput[]) : [];
+
+    const projectsContext = projects.length > 0
+      ? projects
+          .map((p) => `- **${p.title}** (${(p.techStack || []).join(', ')}): ${p.contextBlurb || 'No description provided.'}`)
           .join('\n')
       : 'None linked yet.';
 
-    const tasksContext = Array.isArray(opportunity?.tasks)
-      ? opportunity.tasks
-          .map((t: { done: boolean; title: string }) => `  [${t.done ? 'x' : ' '}] ${t.title}`)
-          .join('\n')
-      : '';
+    const tasksContext = Array.isArray(opp.tasks) && opp.tasks.length > 0
+      ? opp.tasks.map((t) => `  [${t.done ? 'x' : ' '}] ${t.title}`).join('\n')
+      : '  No sub-tasks listed.';
 
-    const systemInstruction = `You are Orbit Ask AI — a tactical, high-precision engineering advisor embedded inside the Orbit Opportunity & Pipeline Command Center.
+    const systemInstruction = `You are Orbit Ask AI — an advisor embedded inside the Orbit Opportunity & Pipeline Command Center.
 You are strictly scoped to the following opportunity and its linked Arsenal projects:
 
 OPPORTUNITY:
-- Code: ${opportunity?.code || 'N/A'}
-- Title: ${opportunity?.title || 'Unknown'}
-- Organization: ${opportunity?.organization || 'Unknown'}
-- Type: ${opportunity?.type || 'Unknown'}
-- Status: ${opportunity?.status || 'Unknown'}
-- Deadline: ${opportunity?.deadline || 'Unscheduled'}
-- URL: ${opportunity?.url || 'None'}
-- Current Pitch / Copy: ${opportunity?.applicationCopy || 'None'}
-- Builder Notes: ${opportunity?.notes || 'None'}
-- Sub-tasks (${opportunity?.tasksDone || 0}/${opportunity?.tasksTotal || 0}):
+- Code: ${opp.code || 'N/A'}
+- Title: ${opp.title || 'Untitled'}
+- Organization: ${opp.organization || 'Unspecified'}
+- Type: ${opp.type || 'General'}
+- Status: ${opp.status || 'Active'}
+- Deadline: ${opp.deadline || 'Unscheduled'}
+- URL: ${opp.url || 'None'}
+- Current Application Copy: ${opp.applicationCopy || 'None'}
+- Builder Notes: ${opp.notes || 'None'}
+- Sub-tasks (${opp.tasksDone || 0}/${opp.tasksTotal || 0}):
 ${tasksContext}
 
 LINKED ARSENAL PROJECTS:
 ${projectsContext}
 
 RULES:
-- Be concise, technical, and immediately actionable (Linear/Raycast style).
-- Write concrete application copy, technical architecture pitches, or checklist steps tailored to the linked projects (such as PatchTree, SentinelFlow, ChronosKV).
-- Never invent generic fluff; anchor every recommendation in the specific tech stack and metrics of the linked projects.`;
+- Be concise, technical, and immediately actionable.
+- Draft concrete application answers, eligibility checks, or submission checklists based only on the opportunity details and linked projects above.
+- If no projects are linked, suggest how to position a project from scratch for this opportunity type.
+- Never invent metrics, benchmarks, or projects not present in the context above.`;
 
-    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
-      // Deterministic, context-aware fallback for zero-backend Demo Mode
-      const projNames =
-        Array.isArray(linkedProjects) && linkedProjects.length > 0
-          ? linkedProjects.map((p: { title: string }) => p.title).join(' + ')
-          : 'your Arsenal projects';
+    // Demo fallback when no key is provided
+    if (!apiKey) {
+      const projSummary = projects.length > 0
+        ? projects.map((p) => p.title).join(', ')
+        : 'None';
 
-      const pendingTasks = Array.isArray(opportunity?.tasks)
-        ? opportunity.tasks.filter((t: { done: boolean }) => !t.done)
+      const pendingTasks = Array.isArray(opp.tasks)
+        ? opp.tasks.filter((t) => !t.done)
         : [];
 
-      const nextTaskLine =
-        pendingTasks.length > 0
-          ? `Next critical sub-task: **${pendingTasks[0].title}** (${opportunity.tasksDone}/${opportunity.tasksTotal} complete).`
-          : `All ${opportunity?.tasksTotal || 0} sub-tasks are marked complete.`;
+      const nextTaskText = pendingTasks.length > 0
+        ? `Next pending task: "${pendingTasks[0].title}".`
+        : 'All current sub-tasks are marked complete.';
 
-      const fallbackReply = `**Tactical synthesis for ${opportunity?.code} (${opportunity?.title})**\n\n- **Positioning ${projNames}**: Anchor the opening hook on verifiable execution metrics (\`<180ms\` AST synthesis in PatchTree, \`<0.4ms\` eBPF kernel enforcement in SentinelFlow) directly aligned with **${opportunity?.organization}**'s review criteria.\n- **Draft Pitch Snippet**: *"${opportunity?.applicationCopy || `We combine ${projNames} to deliver deterministic verification and runtime isolation for autonomous AI workflows.`}"*\n- **Execution Status**: ${nextTaskLine}`;
+      const fallbackText = `**Demo Mode Response for ${opp.code || 'Opportunity'} (${opp.title || 'Untitled'})**\n\n` +
+        `• **Linked Projects**: ${projSummary}\n` +
+        `• **Target**: ${opp.organization || 'Program'}\n` +
+        `• **Sub-task Status**: ${opp.tasksDone || 0} of ${opp.tasksTotal || 0} complete. ${nextTaskText}\n\n` +
+        `*To enable live AI completions and search grounding, paste your Gemini API key in Settings (kept in browser memory only) or set GEMINI_API_KEY.*`;
 
       return NextResponse.json({
-        text: fallbackReply,
-        sources: opportunity?.url
-          ? [{ title: `${opportunity.organization} Official Portal`, uri: opportunity.url }]
-          : [],
+        text: fallbackText,
+        sources: opp.url ? [{ title: `${opp.organization || 'Official'} Portal`, uri: opp.url }] : [],
         mode: 'demo',
       });
     }
@@ -83,20 +115,30 @@ RULES:
       apiKey,
       httpOptions: {
         headers: {
-          'User-Agent': 'aistudio-build',
+          'User-Agent': 'orbit-app',
         },
       },
     });
 
-    const conversationHistory = Array.isArray(history)
-      ? history.slice(-6).map((msg: { role: string; content: string }) => ({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }],
-        }))
-      : [];
+    // Gemini API requires chat history to start with a 'user' turn.
+    // Drop any leading assistant/model messages before sending.
+    const rawHistory = Array.isArray(history) ? (history as ChatMessageInput[]) : [];
+    let firstUserIndex = -1;
+    for (let i = 0; i < rawHistory.length; i++) {
+      if (rawHistory[i].role === 'user') {
+        firstUserIndex = i;
+        break;
+      }
+    }
+
+    const trimmedHistory = firstUserIndex >= 0 ? rawHistory.slice(firstUserIndex) : [];
+    const conversationHistory = trimmedHistory.slice(-8).map((msg) => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }],
+    }));
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: modelName,
       contents: [
         ...conversationHistory,
         { role: 'user', parts: [{ text: prompt }] },
@@ -122,11 +164,6 @@ RULES:
     });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : 'Failed to reach Gemini API';
-    return NextResponse.json(
-      {
-        error: errMsg,
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errMsg }, { status: 500 });
   }
 }
