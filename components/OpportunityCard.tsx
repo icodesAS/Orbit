@@ -7,6 +7,19 @@ import OpportunityTasksList from './OpportunityTasksList';
 import OpportunityHeatChip from './OpportunityHeatChip';
 import { Sparkles, ArrowRight, ChevronDown, ChevronRight, ExternalLink, Edit2 } from 'lucide-react';
 
+/**
+ * Validates that a URL uses HTTPS protocol
+ */
+function isValidHttpsUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 interface OpportunityCardProps {
   opportunity: Opportunity;
   allProjects: ArsenalProject[];
@@ -98,7 +111,7 @@ export default function OpportunityCard({
             <h3 className="font-medium text-[#16181D] truncate" title={opportunity.title}>
               {opportunity.title}
             </h3>
-            {opportunity.url && (
+            {opportunity.url && isValidHttpsUrl(opportunity.url) && (
               <a
                 href={opportunity.url}
                 target="_blank"

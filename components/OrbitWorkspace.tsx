@@ -245,6 +245,7 @@ export default function OrbitWorkspace() {
 
       <AskAIDrawer
         opportunity={selectedAiOpp} allProjects={projects} userApiKey={userApiKey}
+        firebaseUser={user}
         onClose={() => setSelectedAiOppId(null)} onSendMessage={handleAddAiMessage}
         onClearHistory={handleClearAiHistory}
       />

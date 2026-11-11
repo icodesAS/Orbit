@@ -15,6 +15,19 @@ import {
   Calendar,
 } from 'lucide-react';
 
+/**
+ * Validates that a URL uses HTTPS protocol
+ */
+function isValidHttpsUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 interface RadarViewProps {
   radarItems: RadarItem[];
   projectsMap: Record<string, ArsenalProject>;
@@ -55,6 +68,10 @@ export default function RadarView({
   const currentDateStr = selectedDate || availableDates[0] || new Date().toISOString().split('T')[0];
 
   const handleOpenSource = (item: RadarItem) => {
+    if (!isValidHttpsUrl(item.url)) {
+      alert('Invalid URL: only HTTPS URLs are allowed');
+      return;
+    }
     setOpenedUrls((prev) => ({ ...prev, [item.id]: true }));
     window.open(item.url, '_blank', 'noopener,noreferrer');
   };

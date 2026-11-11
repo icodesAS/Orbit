@@ -102,8 +102,19 @@ export async function saveOpportunityToFirestore(
     batch.set(taskDocRef, t, { merge: true });
   }
 
-  // Upsert chat messages
+  // Upsert chat messages (and delete removed ones)
   const aiChatCol = collection(db, 'users', userId, 'opportunities', opp.id, 'aiChat');
+  const existingChatSnap = await getDocs(aiChatCol);
+  const currentChatIds = new Set(aiChat.map((msg) => msg.id));
+  
+  // Delete removed chat messages
+  for (const d of existingChatSnap.docs) {
+    if (!currentChatIds.has(d.id)) {
+      batch.delete(d.ref);
+    }
+  }
+  
+  // Upsert current chat messages
   for (const msg of aiChat) {
     const chatDocRef = doc(aiChatCol, msg.id);
     batch.set(chatDocRef, msg, { merge: true });
@@ -117,8 +128,29 @@ export async function deleteOpportunityFromFirestore(
   oppId: string
 ): Promise<void> {
   const db = getDb();
+  
+  // Delete all tasks in subcollection
+  const tasksCol = collection(db, 'users', userId, 'opportunities', oppId, 'tasks');
+  const tasksSnap = await getDocs(tasksCol);
+  const batch = writeBatch(db);
+  
+  tasksSnap.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  
+  // Delete all aiChat messages in subcollection
+  const aiChatCol = collection(db, 'users', userId, 'opportunities', oppId, 'aiChat');
+  const aiChatSnap = await getDocs(aiChatCol);
+  
+  aiChatSnap.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  
+  // Delete the parent opportunity document
   const oppRef = doc(db, 'users', userId, 'opportunities', oppId);
-  await deleteDoc(oppRef);
+  batch.delete(oppRef);
+  
+  await batch.commit();
 }
 
 export function subscribeProjects(
@@ -243,17 +275,25 @@ export async function migrateLocalDataToFirestore(
     settings?: SettingsProfile;
   }
 ): Promise<{ oppsCount: number; projsCount: number }> {
-  for (const opp of data.opportunities) {
-    await saveOpportunityToFirestore(userId, opp);
+  // Filter out sample data (isSample: true) before migration
+  const realOpportunities = data.opportunities.filter(opp => !(opp as any).isSample);
+  const realProjects = data.projects.filter(proj => !(proj as any).isSample);
+  
+  for (const opp of realOpportunities) {
+    // Remove isSample property if present
+    const { isSample, ...oppData } = opp as any;
+    await saveOpportunityToFirestore(userId, oppData);
   }
-  for (const proj of data.projects) {
-    await saveProjectToFirestore(userId, proj);
+  for (const proj of realProjects) {
+    // Remove isSample property if present
+    const { isSample, ...projData } = proj as any;
+    await saveProjectToFirestore(userId, projData);
   }
   if (data.settings) {
     await saveSettingsToFirestore(userId, data.settings);
   }
   return {
-    oppsCount: data.opportunities.length,
-    projsCount: data.projects.length,
+    oppsCount: realOpportunities.length,
+    projsCount: realProjects.length,
   };
 }

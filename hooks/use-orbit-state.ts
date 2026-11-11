@@ -30,9 +30,24 @@ export function useOrbitState() {
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [selectedRadarDate, setSelectedRadarDate] = useState<string>('');
 
+  // Clear state when user signs out
+  useEffect(() => {
+    if (!auth.user) {
+      setOpportunities([]);
+      setProjects([]);
+      setRadarDays([]);
+      setUserApiKey('');
+      setSelectedRadarDate('');
+      setUndoAction(null);
+    }
+  }, [auth.user]);
+
   // Real-time Firestore subscriptions when signed in
   useEffect(() => {
-    if (!auth.user) return;
+    if (!auth.user) {
+      return;
+    }
+
     const uid = auth.user.uid;
 
     const unsubOpps = subscribeOpportunities(uid, (remoteOpps) => {
@@ -44,7 +59,8 @@ export function useOrbitState() {
     }, (err) => setErrorToast(`Cloud projects error: ${err.message}`));
 
     const unsubRadar = subscribeRadarDays(uid, (remoteDays) => {
-      if (remoteDays.length > 0) setRadarDays(remoteDays);
+      // Always set radar days, even if empty, to clear previous user's data
+      setRadarDays(remoteDays);
     }, (err) => setErrorToast(`Cloud radar error: ${err.message}`));
 
     return () => {

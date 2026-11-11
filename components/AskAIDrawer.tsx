@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Opportunity, ArsenalProject } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
 import AskAIChatMessage from './AskAIChatMessage';
+import type { User } from 'firebase/auth';
 import {
   X,
   Sparkles,
@@ -18,6 +19,7 @@ interface AskAIDrawerProps {
   opportunity: Opportunity | null;
   allProjects: ArsenalProject[];
   userApiKey?: string;
+  firebaseUser?: User | null;
   onClose: () => void;
   onSendMessage: (
     opportunityId: string,
@@ -38,6 +40,7 @@ export default function AskAIDrawer({
   opportunity,
   allProjects,
   userApiKey,
+  firebaseUser,
   onClose,
   onSendMessage,
   onClearHistory,
@@ -79,15 +82,34 @@ export default function AskAIDrawer({
     setIsLoading(true);
 
     try {
+      // Build headers with auth token if available
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add user API key as header if provided
+      if (userApiKey) {
+        headers['X-Gemini-Key'] = userApiKey;
+      }
+      
+      // Add Firebase auth token if user is signed in
+      if (firebaseUser) {
+        try {
+          const token = await firebaseUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        } catch (err) {
+          console.error('Failed to get ID token:', err);
+        }
+      }
+
       const response = await fetch('/api/gemini/ask', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           prompt: trimmed,
           opportunity,
           linkedProjects,
           history: opportunity.aiChat,
-          userKey: userApiKey || undefined,
         }),
       });
 

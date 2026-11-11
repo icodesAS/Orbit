@@ -37,10 +37,8 @@ function initFirebaseAdmin() {
   if (getApps().length > 0) return getApps()[0];
 
   let credential;
-  if (fs.existsSync('service-account.json')) {
-    const sa = JSON.parse(fs.readFileSync('service-account.json', 'utf8'));
-    credential = cert(sa);
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // Only use environment variable for security - never read from local file
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     let sa = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
     while (typeof sa === 'string') {
       try {
@@ -71,7 +69,7 @@ async function runRadarJob() {
   const db = getFirestore();
 
   const todayDate = new Date().toISOString().split('T')[0];
-  console.log(`📅 Target Date: ${todayDate} | User UID: ${userId.slice(0, 6)}...`);
+  console.log(`📅 Target Date: ${todayDate} | User UID: <redacted>`);
 
   // 1. Fetch user's Arsenal projects
   console.log('📦 Fetching Arsenal projects for context matching...');
