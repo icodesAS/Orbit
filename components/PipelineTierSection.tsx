@@ -14,6 +14,7 @@ interface PipelineTierSectionProps {
   expandedMap: Record<string, boolean>;
   selectedAiOppId: string | null;
   activeProjectPickerOppId: string | null;
+  canUseAi?: boolean;
   onFocusOpportunity: (id: string) => void;
   onToggleExpand: (id: string) => void;
   onOpenEdit: (opp: Opportunity) => void;
@@ -35,6 +36,7 @@ export default function PipelineTierSection({
   expandedMap,
   selectedAiOppId,
   activeProjectPickerOppId,
+  canUseAi = false,
   onFocusOpportunity,
   onToggleExpand,
   onOpenEdit,
@@ -105,6 +107,7 @@ export default function PipelineTierSection({
                   isExpanded={Boolean(expandedMap[opp.id])}
                   isSelectedForAI={selectedAiOppId === opp.id}
                   isProjectPickerOpen={activeProjectPickerOppId === opp.id}
+                  canUseAi={canUseAi}
                   onFocus={() => onFocusOpportunity(opp.id)}
                   onToggleExpand={() => onToggleExpand(opp.id)}
                   onOpenEdit={() => onOpenEdit(opp)}

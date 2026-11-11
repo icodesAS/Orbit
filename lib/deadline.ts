@@ -24,6 +24,15 @@ export function getDeadlineInfo(
 
   const now = new Date();
   const target = new Date(deadlineIso);
+  if (isNaN(target.getTime())) {
+    return {
+      heat: 'none',
+      relativeLabel: 'TBD',
+      absoluteLabel: 'No date',
+      hoursRemaining: null,
+      isUrgent72h: false,
+    };
+  }
   const diffMs = target.getTime() - now.getTime();
   const diffHours = diffMs / (1000 * 60 * 60);
 

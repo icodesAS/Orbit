@@ -4,12 +4,28 @@ service cloud.firestore {
     function isOwner(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
+
+    function isValidOpportunity(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 300
+        && data.status in ['active', 'waitlist', 'submitted', 'archived'];
+    }
+
+    function isValidProject(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 200;
+    }
+
     match /users/{userId} {
-      match /opportunities/{oppId}/{document=**} {
-        allow read, write: if isOwner(userId);
+      match /opportunities/{oppId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidOpportunity(request.resource.data);
+
+        match /{subcollection}/{docId} {
+          allow read, write: if isOwner(userId);
+        }
       }
       match /projects/{projectId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidProject(request.resource.data);
       }
       match /settings/{settingId} {
         allow read, write: if isOwner(userId);
@@ -23,7 +39,9 @@ service cloud.firestore {
         allow create, delete: if false;
         allow update: if isOwner(userId)
           && request.resource.data.diff(resource.data)
-             .affectedKeys().hasOnly(['promoted', 'verified']);
+             .affectedKeys().hasOnly(['promoted', 'verified'])
+          && request.resource.data.promoted is bool
+          && request.resource.data.verified is bool;
       }
     }
   }

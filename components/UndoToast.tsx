@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UndoAction } from '@/lib/types';
 import { RotateCcw } from 'lucide-react';
@@ -8,9 +8,18 @@ import { RotateCcw } from 'lucide-react';
 interface UndoToastProps {
   undoAction: UndoAction | null;
   onUndo: () => void;
+  onDismiss?: () => void;
 }
 
-export default function UndoToast({ undoAction, onUndo }: UndoToastProps) {
+export default function UndoToast({ undoAction, onUndo, onDismiss }: UndoToastProps) {
+  useEffect(() => {
+    if (!undoAction || !onDismiss) return;
+    const timer = setTimeout(() => {
+      onDismiss();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [undoAction, onDismiss]);
+
   if (!undoAction) return null;
 
   return (

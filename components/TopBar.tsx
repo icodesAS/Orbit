@@ -8,12 +8,14 @@ import OpportunityHeatChip from './OpportunityHeatChip';
 
 interface TopBarProps {
   opportunities: Opportunity[];
+  isGuest?: boolean;
   onOpenCommandPalette: () => void;
   onJumpToOpportunity?: (id: string) => void;
 }
 
 export default function TopBar({
   opportunities,
+  isGuest = false,
   onOpenCommandPalette,
   onJumpToOpportunity,
 }: TopBarProps) {
@@ -54,8 +56,14 @@ export default function TopBar({
         </kbd>
       </button>
 
-      {/* Date & Next Deadline */}
-      <div className="flex items-center gap-4 text-xs">
+      {/* Guest Label, Date & Next Deadline */}
+      <div className="flex items-center gap-3 sm:gap-4 text-xs">
+        {isGuest && (
+          <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-[#F5F5F3] border border-[#E5E5E1] text-[#6B7280] whitespace-nowrap shrink-0">
+            Guest, saved on this device
+          </span>
+        )}
+
         {/* Date */}
         <div className="hidden sm:flex items-center gap-1.5 text-[#6B7280] font-mono text-[11px]">
           <Calendar className="w-3.5 h-3.5 text-[#6B7280]" />

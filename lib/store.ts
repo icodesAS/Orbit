@@ -2,10 +2,11 @@ import { ArsenalProject, Opportunity, RadarDay, SettingsProfile } from './types'
 import { DEFAULT_GEMINI_MODEL } from './config';
 
 const STORAGE_KEYS = {
-  OPPORTUNITIES: 'orbit_demo_v1_opportunities',
-  PROJECTS: 'orbit_demo_v1_projects',
-  RADAR_DAYS: 'orbit_demo_v1_radardays',
-  SETTINGS: 'orbit_demo_v1_settings',
+  OPPORTUNITIES: 'orbit_guest_v1_opportunities',
+  PROJECTS: 'orbit_guest_v1_projects',
+  RADAR_DAYS: 'orbit_guest_v1_radardays',
+  SETTINGS: 'orbit_guest_v1_settings',
+  GUEST_ACTIVE: 'orbit_guest_v1_active',
 };
 
 export interface OrbitStoreState {
@@ -13,18 +14,17 @@ export interface OrbitStoreState {
   projects: ArsenalProject[];
   radarDays: RadarDay[];
   settings: SettingsProfile;
-  isLive: boolean;
 }
 
 export interface OrbitDataStore {
-  isLive: () => boolean;
   loadState: () => OrbitStoreState;
   saveOpportunities: (opps: Opportunity[]) => void;
   saveProjects: (projs: ArsenalProject[]) => void;
   saveRadarDays: (days: RadarDay[]) => void;
   saveSettings: (settings: SettingsProfile) => void;
-  loadSampleData: () => Promise<OrbitStoreState>;
-  removeSampleData: () => OrbitStoreState;
+  clearLocalData: () => void;
+  isGuestSessionActive: () => boolean;
+  setGuestSessionActive: (active: boolean) => void;
 }
 
 function getDefaultSettings(): SettingsProfile {
@@ -35,19 +35,13 @@ function getDefaultSettings(): SettingsProfile {
   };
 }
 
-class DemoStore implements OrbitDataStore {
-  isLive(): boolean {
-    return false;
-  }
-
-  // Default workspace starts completely EMPTY
+class GuestStore implements OrbitDataStore {
   loadState(): OrbitStoreState {
     const defaultState: OrbitStoreState = {
       opportunities: [],
       projects: [],
       radarDays: [],
       settings: getDefaultSettings(),
-      isLive: false,
     };
 
     if (typeof window === 'undefined') {
@@ -65,7 +59,6 @@ class DemoStore implements OrbitDataStore {
         projects: storedProjs ? JSON.parse(storedProjs) : [],
         radarDays: storedRadar ? JSON.parse(storedRadar) : [],
         settings: storedSettings ? JSON.parse(storedSettings) : getDefaultSettings(),
-        isLive: false,
       };
     } catch {
       return defaultState;
@@ -77,7 +70,7 @@ class DemoStore implements OrbitDataStore {
     try {
       localStorage.setItem(STORAGE_KEYS.OPPORTUNITIES, JSON.stringify(opps));
     } catch {
-      // Ignore quota errors in demo mode
+      // Ignore storage quota errors
     }
   }
 
@@ -86,7 +79,7 @@ class DemoStore implements OrbitDataStore {
     try {
       localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projs));
     } catch {
-      // Ignore quota errors
+      // Ignore storage quota errors
     }
   }
 
@@ -95,7 +88,7 @@ class DemoStore implements OrbitDataStore {
     try {
       localStorage.setItem(STORAGE_KEYS.RADAR_DAYS, JSON.stringify(days));
     } catch {
-      // Ignore quota errors
+      // Ignore storage quota errors
     }
   }
 
@@ -104,97 +97,46 @@ class DemoStore implements OrbitDataStore {
     try {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
     } catch {
-      // Ignore quota errors
+      // Ignore storage quota errors
     }
   }
 
-  // Opt-in sample data loader via dynamic import
-  async loadSampleData(): Promise<OrbitStoreState> {
-    const { createInitialDemoData } = await import('@/demo/demoData');
-    const sample = createInitialDemoData(Date.now());
-    const currentState = this.loadState();
-
-    const existingOppIds = new Set(currentState.opportunities.map((o) => o.id));
-    const newOpps = [
-      ...currentState.opportunities,
-      ...sample.opportunities.filter((o) => !existingOppIds.has(o.id)),
-    ];
-
-    const existingProjIds = new Set(currentState.projects.map((p) => p.id));
-    const newProjs = [
-      ...currentState.projects,
-      ...sample.projects.filter((p) => !existingProjIds.has(p.id)),
-    ];
-
-    const newRadar = sample.radarDays;
-
-    this.saveOpportunities(newOpps);
-    this.saveProjects(newProjs);
-    this.saveRadarDays(newRadar);
-
-    return {
-      opportunities: newOpps,
-      projects: newProjs,
-      radarDays: newRadar,
-      settings: currentState.settings,
-      isLive: false,
-    };
+  clearLocalData(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem(STORAGE_KEYS.OPPORTUNITIES);
+      localStorage.removeItem(STORAGE_KEYS.PROJECTS);
+      localStorage.removeItem(STORAGE_KEYS.RADAR_DAYS);
+    } catch {
+      // Ignore storage errors
+    }
   }
 
-  // Removes ONLY items where isSample === true; custom created items remain intact
-  removeSampleData(): OrbitStoreState {
-    const currentState = this.loadState();
-    const cleanOpps = currentState.opportunities.filter((o) => !o.isSample);
-    const cleanProjs = currentState.projects.filter((p) => !p.isSample);
-    const cleanRadar = currentState.radarDays
-      .filter((d) => !d.isSample)
-      .map((day) => ({
-        ...day,
-        items: day.items.filter((i) => !i.isSample),
-      }))
-      .filter((day) => day.items.length > 0);
-
-    this.saveOpportunities(cleanOpps);
-    this.saveProjects(cleanProjs);
-    this.saveRadarDays(cleanRadar);
-
-    return {
-      opportunities: cleanOpps,
-      projects: cleanProjs,
-      radarDays: cleanRadar,
-      settings: currentState.settings,
-      isLive: false,
-    };
-  }
-}
-
-// LiveStore (Firestore) stub for Phase G - sample feature hidden and never loads sample data
-class LiveStoreStub implements OrbitDataStore {
-  isLive(): boolean {
-    return true;
+  isGuestSessionActive(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      if (localStorage.getItem(STORAGE_KEYS.GUEST_ACTIVE) === 'true') return true;
+      const opps = localStorage.getItem(STORAGE_KEYS.OPPORTUNITIES);
+      const projs = localStorage.getItem(STORAGE_KEYS.PROJECTS);
+      if (opps && JSON.parse(opps).length > 0) return true;
+      if (projs && JSON.parse(projs).length > 0) return true;
+      return false;
+    } catch {
+      return false;
+    }
   }
 
-  loadState(): OrbitStoreState {
-    return {
-      opportunities: [],
-      projects: [],
-      radarDays: [],
-      settings: getDefaultSettings(),
-      isLive: true,
-    };
-  }
-
-  saveOpportunities(): void {}
-  saveProjects(): void {}
-  saveRadarDays(): void {}
-  saveSettings(): void {}
-
-  async loadSampleData(): Promise<OrbitStoreState> {
-    return this.loadState();
-  }
-
-  removeSampleData(): OrbitStoreState {
-    return this.loadState();
+  setGuestSessionActive(active: boolean): void {
+    if (typeof window === 'undefined') return;
+    try {
+      if (active) {
+        localStorage.setItem(STORAGE_KEYS.GUEST_ACTIVE, 'true');
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.GUEST_ACTIVE);
+      }
+    } catch {
+      // Ignore storage errors
+    }
   }
 }
 
@@ -207,8 +149,5 @@ export function isFirebaseConfigured(): boolean {
 }
 
 export function getOrbitStore(): OrbitDataStore {
-  if (isFirebaseConfigured()) {
-    return new LiveStoreStub();
-  }
-  return new DemoStore();
+  return new GuestStore();
 }

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { AIChatMessage } from '@/lib/types';
+import { isValidHttpsUrl } from '@/lib/url';
 import { CheckCircle2, ExternalLink } from 'lucide-react';
 
 interface AskAIChatMessageProps {
@@ -34,7 +35,7 @@ export default function AskAIChatMessage({ message }: AskAIChatMessageProps) {
               <span>Search Grounding Sources:</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {message.sources.map((src, i) => (
+              {message.sources.filter((src) => isValidHttpsUrl(src.uri)).map((src, i) => (
                 <a
                   key={i}
                   href={src.uri}

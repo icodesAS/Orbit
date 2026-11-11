@@ -5,7 +5,6 @@ import { Opportunity, ArsenalProject } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
 import OpportunityHeatChip from './OpportunityHeatChip';
 import {
-  Clock,
   Radar,
   Sparkles,
   ArrowRight,
@@ -18,14 +17,12 @@ interface TodayViewProps {
   projectsMap: Record<string, ArsenalProject>;
   focusedId: string | null;
   unreviewedRadarCount: number;
-  isLive?: boolean;
-  hasSampleData?: boolean;
+  canUseAi?: boolean;
   onFocusOpportunity: (id: string) => void;
   onOpenAskAI: (opp: Opportunity) => void;
   onAdvanceStatus: (id: string) => void;
   onJumpToRadar: () => void;
   onOpenNewModal?: () => void;
-  onLoadSampleData?: () => void;
 }
 
 export default function TodayView({
@@ -33,16 +30,13 @@ export default function TodayView({
   projectsMap,
   focusedId,
   unreviewedRadarCount,
-  isLive = false,
-  hasSampleData = false,
+  canUseAi = false,
   onFocusOpportunity,
   onOpenAskAI,
   onAdvanceStatus,
   onJumpToRadar,
   onOpenNewModal,
-  onLoadSampleData,
 }: TodayViewProps) {
-  // Urgent items within 72h horizon
   const urgentItems = opportunities
     .filter((o) => o.status === 'active' || o.status === 'waitlist')
     .map((o) => ({
@@ -58,7 +52,6 @@ export default function TodayView({
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* Page Heading with Italic Serif Accent */}
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 pb-4 border-b border-[#E5E5E1]">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-[#16181D]">
@@ -69,7 +62,6 @@ export default function TodayView({
           </p>
         </div>
 
-        {/* Morning Digest Link */}
         <button
           type="button"
           onClick={onJumpToRadar}
@@ -84,7 +76,6 @@ export default function TodayView({
         </button>
       </div>
 
-      {/* Horizon Content */}
       {opportunities.length === 0 ? (
         <div className="p-8 text-center rounded-lg border border-[#E5E5E1] bg-white space-y-3">
           <p className="text-xs text-[#6B7280]">
@@ -99,15 +90,6 @@ export default function TodayView({
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add your first opportunity</span>
-              </button>
-            )}
-            {!isLive && !hasSampleData && onLoadSampleData && (
-              <button
-                type="button"
-                onClick={onLoadSampleData}
-                className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#F5F5F3] border border-[#E5E5E1] text-[#16181D] font-mono text-xs transition-colors shadow-2xs"
-              >
-                Load sample data
               </button>
             )}
           </div>
@@ -197,11 +179,11 @@ export default function TodayView({
                       <button
                         type="button"
                         onClick={() => onOpenAskAI(opp)}
-                        title="Scoped Ask AI (A)"
+                        title={canUseAi ? 'Scoped Ask AI (A)' : 'Sign in to use Ask AI'}
                         className="px-2 py-0.5 rounded text-[11px] font-mono text-[#4355B9] hover:bg-[#4355B9]/10 transition-colors flex items-center gap-1"
                       >
                         <Sparkles className="w-3 h-3" />
-                        <span>AI</span>
+                        <span>{canUseAi ? 'AI' : 'Sign in to use Ask AI'}</span>
                       </button>
                       <button
                         type="button"

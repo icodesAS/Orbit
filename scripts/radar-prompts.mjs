@@ -27,15 +27,25 @@ export const RADAR_TIERS = [
   },
 ];
 
+function cleanPromptText(val, maxLen = 500) {
+  if (typeof val !== 'string') return '';
+  return val
+    .replace(/"""/g, "'''")
+    .replace(/[\u0000-\u001F]/g, ' ')
+    .slice(0, maxLen)
+    .trim();
+}
+
 export function buildRadarPrompt({ tier, arsenalProjects, seenUrls = [] }) {
   const projectsList = arsenalProjects.length > 0
     ? arsenalProjects
-        .map((p) => `- Project ID "${p.id}": "${p.title}" (${(p.techStack || []).join(', ')}). Context: ${p.contextBlurb || p.description || 'No context'}`)
+        .slice(0, 20)
+        .map((p) => `- Project ID "${cleanPromptText(p.id, 60)}": """${cleanPromptText(p.title, 120)}""" (${(p.techStack || []).slice(0, 15).map((s) => cleanPromptText(s, 40)).join(', ')}). Context: """${cleanPromptText(p.contextBlurb || p.description || 'No context', 600)}"""`)
         .join('\n')
     : 'No projects registered in Arsenal yet.';
 
   const exclusions = seenUrls.length > 0
-    ? `Do NOT include any of the following already-seen URLs:\n${seenUrls.slice(0, 30).map((u) => `- ${u}`).join('\n')}\n`
+    ? `Do NOT include any of the following already-seen URLs:\n${seenUrls.slice(0, 30).map((u) => `- ${cleanPromptText(u, 300)}`).join('\n')}\n`
     : '';
 
   return `Discover and curate real, active, currently open or upcoming ${tier.name} opportunities in 2026/2027.

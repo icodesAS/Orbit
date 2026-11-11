@@ -166,7 +166,7 @@ export default function CommandPalette({
         id: 'nav-settings',
         category: 'Navigation',
         label: 'Go to Settings',
-        sublabel: 'Demo mode, BYOK API key, model config',
+        sublabel: 'Account sync, BYOK API key, JSON backup',
         icon: SlidersHorizontal,
         action: () => { onSelectSection('settings'); onClose(); },
       }

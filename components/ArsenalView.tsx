@@ -3,31 +3,25 @@
 import React, { useState } from 'react';
 import { ArsenalProject } from '@/lib/types';
 import { generateId } from '@/lib/id';
+import { isValidHttpsUrl } from '@/lib/url';
 import { FolderGit2, Plus, ExternalLink, Edit2, Trash2, X } from 'lucide-react';
 
 interface ArsenalViewProps {
   projects: ArsenalProject[];
-  isLive?: boolean;
-  hasSampleData?: boolean;
   onAddProject: (proj: ArsenalProject) => void;
   onUpdateProject: (proj: ArsenalProject) => void;
   onDeleteProject: (id: string) => void;
-  onLoadSampleData?: () => void;
 }
 
 export default function ArsenalView({
   projects,
-  isLive = false,
-  hasSampleData = false,
   onAddProject,
   onUpdateProject,
   onDeleteProject,
-  onLoadSampleData,
 }: ArsenalViewProps) {
   const [editingProject, setEditingProject] = useState<ArsenalProject | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Form fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [contextBlurb, setContextBlurb] = useState('');
@@ -71,11 +65,14 @@ export default function ArsenalView({
         const colonIdx = line.indexOf(':');
         if (colonIdx > 0) {
           const label = line.slice(0, colonIdx).trim();
-          const url = line.slice(colonIdx + 1).trim();
-          return { label: label || 'Link', url: url.startsWith('http') ? url : `https://${url}` };
+          const rawUrl = line.slice(colonIdx + 1).trim();
+          const url = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+          return { label: label || 'Link', url };
         }
-        return { label: 'Source', url: line.startsWith('http') ? line : `https://${line}` };
-      });
+        const url = line.startsWith('http') ? line : `https://${line}`;
+        return { label: 'Source', url };
+      })
+      .filter((item) => isValidHttpsUrl(item.url));
 
     const parsedStack = techStackInput.split(',').map((s) => s.trim()).filter(Boolean);
     const now = new Date().toISOString();
@@ -217,11 +214,6 @@ export default function ArsenalView({
             <button type="button" onClick={openCreate} className="px-3 py-1.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-white font-mono text-xs transition-colors shadow-2xs">
               Add your first project
             </button>
-            {!isLive && !hasSampleData && onLoadSampleData && (
-              <button type="button" onClick={onLoadSampleData} className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#F5F5F3] border border-[#E5E5E1] text-[#16181D] font-mono text-xs transition-colors shadow-2xs">
-                Load sample data
-              </button>
-            )}
           </div>
         </div>
       ) : (
@@ -253,7 +245,7 @@ export default function ArsenalView({
                 </div>
                 {project.urls.length > 0 && (
                   <div className="flex items-center gap-3 flex-wrap">
-                    {project.urls.map((u) => (
+                    {project.urls.filter((u) => isValidHttpsUrl(u.url)).map((u) => (
                       <a key={u.label} href={u.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-[#4355B9] hover:underline">
                         <span>{u.label}</span>
                         <ExternalLink className="w-2.5 h-2.5" />

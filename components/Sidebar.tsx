@@ -26,7 +26,7 @@ interface SidebarProps {
     radarUnreviewed: number;
     arsenal: number;
   };
-  isLive?: boolean;
+  isSignedIn?: boolean;
   onOpenCommandPalette: () => void;
   onOpenNewModal: () => void;
   onOpenShortcutsModal: () => void;
@@ -36,7 +36,7 @@ export default function Sidebar({
   activeSection,
   onSelectSection,
   counts,
-  isLive = false,
+  isSignedIn = false,
   onOpenCommandPalette,
   onOpenNewModal,
   onOpenShortcutsModal,
@@ -102,12 +102,12 @@ export default function Sidebar({
                 </span>
                 <span
                   className={`font-mono text-[9px] px-1 py-0.2 rounded border uppercase font-medium ${
-                    isLive
+                    isSignedIn
                       ? 'text-[#067647] bg-[#ECFDF3] border-[#D1FADF]'
-                      : 'text-[#B54708] bg-[#FEF0C7] border-[#FEDF89]'
+                      : 'text-[#6B7280] bg-[#F5F5F3] border-[#E5E5E1]'
                   }`}
                 >
-                  {isLive ? 'LIVE' : 'DEMO'}
+                  {isSignedIn ? 'SYNCED' : 'GUEST'}
                 </span>
               </div>
             )}

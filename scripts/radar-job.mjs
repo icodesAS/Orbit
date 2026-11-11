@@ -15,8 +15,29 @@ import { RADAR_TIERS, buildRadarPrompt } from './radar-prompts.mjs';
 
 function hashUrl(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string') return '';
-  const trimmed = rawUrl.trim().toLowerCase().replace(/\/+$/, '');
-  return crypto.createHash('sha256').update(trimmed).digest('hex').slice(0, 16);
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  try {
+    const url = new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`);
+    url.hostname = url.hostname.toLowerCase();
+    url.protocol = url.protocol.toLowerCase();
+    const params = new URLSearchParams(url.search);
+    for (const key of Array.from(params.keys())) {
+      const k = key.toLowerCase();
+      if (k.startsWith('utm_') || ['ref', 'ref_src', 'fbclid', 'gclid', 'mc_cid', 'mc_eid', '_hsenc', '_hsmi'].includes(k)) {
+        params.delete(key);
+      }
+    }
+    params.sort();
+    url.search = params.toString();
+    if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+      url.pathname = url.pathname.slice(0, -1);
+    }
+    url.hash = '';
+    return crypto.createHash('sha256').update(url.toString()).digest('hex');
+  } catch {
+    return crypto.createHash('sha256').update(trimmed.toLowerCase().replace(/\/+$/, '')).digest('hex');
+  }
 }
 
 function parseJsonArray(text) {
@@ -59,11 +80,11 @@ async function runRadarJob() {
   console.log('🚀 Orbit Morning Radar Job starting...');
 
   const apiKey = process.env.GEMINI_API_KEY?.trim();
-  const userId = process.env.TARGET_USER_ID?.trim();
+  const userId = (process.env.TARGET_USER_ID || process.env.FIREBASE_UID)?.trim();
   const modelName = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
 
   if (!apiKey) throw new Error('GEMINI_API_KEY environment variable is required.');
-  if (!userId) throw new Error('TARGET_USER_ID environment variable is required.');
+  if (!userId) throw new Error('TARGET_USER_ID (or FIREBASE_UID) environment variable is required.');
 
   initFirebaseAdmin();
   const db = getFirestore();
@@ -163,25 +184,33 @@ async function runRadarJob() {
       let sectionCount = 0;
       for (const raw of parsedItems) {
         if (!raw.title || !raw.url) continue;
-        const uHash = hashUrl(raw.url);
+        const cleanUrl = String(raw.url).trim();
+        if (!cleanUrl.startsWith('https://')) continue;
+        const uHash = hashUrl(cleanUrl);
 
         if (seenHashes.has(uHash)) {
           console.log(`   ↳ Skipping duplicate: "${raw.title}"`);
           continue;
         }
 
+        let validDeadline = null;
+        if (raw.deadline) {
+          const d = new Date(String(raw.deadline).trim());
+          if (!isNaN(d.getTime())) validDeadline = d.toISOString();
+        }
+
         seenHashes.add(uHash);
-        const itemId = `radar-${tier.priority.toLowerCase()}-${Date.now()}-${sectionCount}`;
+        const itemId = `radar-${tier.priority.toLowerCase()}-${crypto.randomUUID()}`;
         const itemRecord = {
           id: itemId,
           title: String(raw.title).trim(),
           organization: String(raw.organization || 'General').trim(),
           type: raw.type || 'other',
-          url: String(raw.url).trim(),
+          url: cleanUrl,
           urlHash: uHash,
           summary: String(raw.summary || '').trim(),
-          deadline: raw.deadline ? String(raw.deadline).trim() : null,
-          source: String(raw.source || raw.url).trim(),
+          deadline: validDeadline,
+          source: String(raw.source || cleanUrl).trim(),
           priority: tier.priority,
           verified: false,
           promoted: false,

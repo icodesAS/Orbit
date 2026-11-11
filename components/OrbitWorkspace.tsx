@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
-import { Opportunity } from '@/lib/types';
 import { useOrbitState } from '@/hooks/use-orbit-state';
 import Sidebar, { NavSection } from './Sidebar';
 import TopBar from './TopBar';
 import MobileNavBar from './MobileNavBar';
+import SignInScreen from './SignInScreen';
 import TodayView from './TodayView';
-import SampleDataBanner from './SampleDataBanner';
 import PipelineTierSection from './PipelineTierSection';
 import RadarView from './RadarView';
 import ArsenalView from './ArsenalView';
@@ -24,14 +23,14 @@ export default function OrbitWorkspace() {
   const {
     opportunities, projects, projectsMap, activeRadarItems,
     selectedRadarDate, setSelectedRadarDate, availableRadarDates, counts,
-    nextCodeNumber, userApiKey, setUserApiKey, isLive, hasSampleData,
-    user, authLoading, signIn, signOut, errorToast, setErrorToast,
-    undoAction, setUndoAction, updateOpportunities, handleResetDemo,
-    handleLoadSampleData, handleRemoveSampleData, handleCreateOpportunity,
-    handleUpdateOpportunity, handleAdvanceStatus, handleArchive,
-    handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
-    handlePromoteRadarItem, handleToggleVerifyRadarItem, handleAddProject,
-    handleUpdateProject, handleDeleteProject, handleMigrateDemoToCloud,
+    nextCodeNumber, userApiKey, setUserApiKey, isFirebaseReady,
+    isGuestContinued, handleContinueAsGuest, user, authLoading,
+    signIn, signOut, errorToast, setErrorToast, undoAction, setUndoAction,
+    updateOpportunities, handleCreateOpportunity, handleUpdateOpportunity,
+    handleAdvanceStatus, handleArchive, handleToggleSubTask, handleAddSubTask,
+    handleToggleProjectLink, handlePromoteRadarItem, handleToggleVerifyRadarItem,
+    handleAddProject, handleUpdateProject, handleDeleteProject,
+    handleImportLocalToAccount, handleClearLocalData, handleExportJson, handleImportJson,
   } = useOrbitState();
 
   const [activeSection, setActiveSection] = useState<NavSection>('today');
@@ -49,6 +48,7 @@ export default function OrbitWorkspace() {
   const focusedId = selectedFocusedId || opportunities[0]?.id || null;
   const selectedAiOpp = opportunities.find((o) => o.id === selectedAiOppId) || null;
   const editingOpp = opportunities.find((o) => o.id === editingOppId) || null;
+  const canUseAi = Boolean(user) || !isFirebaseReady;
 
   const onPromoteAndFocus = (item: any, confirmedDeadline?: string | null, selectedProjectId?: string | null) => {
     const newId = handlePromoteRadarItem(item, confirmedDeadline || undefined, selectedProjectId);
@@ -109,20 +109,36 @@ export default function OrbitWorkspace() {
   const handleAddAiMessage = (oppId: string, userText: string, assistantText: string, sources?: any[]) => {
     updateOpportunities((prev) => prev.map((o) => o.id === oppId ? {
       ...o,
-      aiChat: [...o.aiChat, { id: `msg-${Date.now()}-u`, role: 'user' as const, content: userText, createdAt: 'just now' }, { id: `msg-${Date.now()}-a`, role: 'assistant' as const, content: assistantText, createdAt: 'just now', sources }],
+      aiChat: [
+        ...o.aiChat,
+        { id: `msg-${Date.now()}-u`, role: 'user' as const, content: userText, createdAt: 'just now' },
+        { id: `msg-${Date.now()}-a`, role: 'assistant' as const, content: assistantText, createdAt: 'just now', sources },
+      ],
       updatedAt: new Date().toISOString(),
     } : o));
   };
+
   const handleClearAiHistory = (oppId: string) => {
     updateOpportunities((prev) => prev.map((o) => (o.id === oppId ? { ...o, aiChat: [] } : o)));
   };
 
   if (!isMounted) return null;
 
+  if (isFirebaseReady && !user && !isGuestContinued) {
+    return (
+      <SignInScreen
+        onSignIn={signIn}
+        onContinueAsGuest={handleContinueAsGuest}
+        authLoading={authLoading}
+      />
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F5F5F3] text-[#16181D] font-sans select-none">
       <Sidebar
-        activeSection={activeSection} onSelectSection={setActiveSection} counts={counts} isLive={isLive}
+        activeSection={activeSection} onSelectSection={setActiveSection} counts={counts}
+        isSignedIn={Boolean(user)}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} onOpenNewModal={() => setIsNewModalOpen(true)}
         onOpenShortcutsModal={() => setIsShortcutsOpen(true)}
       />
@@ -130,11 +146,10 @@ export default function OrbitWorkspace() {
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#F5F5F3]">
         <TopBar
           opportunities={opportunities}
+          isGuest={!user}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           onJumpToOpportunity={(id) => { setSelectedFocusedId(id); setActiveSection('pipeline'); }}
         />
-
-        <SampleDataBanner isLive={isLive} hasSampleData={hasSampleData} onRemoveSampleData={handleRemoveSampleData} />
 
         {activeSection === 'today' && (
           <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
@@ -143,14 +158,12 @@ export default function OrbitWorkspace() {
               projectsMap={projectsMap}
               focusedId={focusedId}
               unreviewedRadarCount={counts.radarUnreviewed}
-              isLive={isLive}
-              hasSampleData={hasSampleData}
+              canUseAi={canUseAi}
               onFocusOpportunity={setSelectedFocusedId}
               onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
               onAdvanceStatus={handleAdvanceStatus}
               onJumpToRadar={() => setActiveSection('radar')}
               onOpenNewModal={() => setIsNewModalOpen(true)}
-              onLoadSampleData={handleLoadSampleData}
             />
           </div>
         )}
@@ -184,6 +197,7 @@ export default function OrbitWorkspace() {
                   expandedMap={expandedMap}
                   selectedAiOppId={selectedAiOppId}
                   activeProjectPickerOppId={activeProjectPickerOppId}
+                  canUseAi={canUseAi}
                   onFocusOpportunity={setSelectedFocusedId}
                   onToggleExpand={(id) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }))}
                   onOpenEdit={(opp) => setEditingOppId(opp.id)}
@@ -209,11 +223,9 @@ export default function OrbitWorkspace() {
               availableDates={availableRadarDates}
               selectedDate={selectedRadarDate || availableRadarDates[0] || ''}
               onSelectDate={setSelectedRadarDate}
-              isLive={isLive}
-              hasSampleData={hasSampleData}
+              isSignedIn={Boolean(user)}
               onConfirmTrack={onPromoteAndFocus}
               onToggleVerifyRadarItem={handleToggleVerifyRadarItem}
-              onLoadSampleData={handleLoadSampleData}
             />
           </div>
         )}
@@ -221,9 +233,10 @@ export default function OrbitWorkspace() {
         {activeSection === 'arsenal' && (
           <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
             <ArsenalView
-              projects={projects} isLive={isLive} hasSampleData={hasSampleData}
-              onAddProject={handleAddProject} onUpdateProject={handleUpdateProject}
-              onDeleteProject={handleDeleteProject} onLoadSampleData={handleLoadSampleData}
+              projects={projects}
+              onAddProject={handleAddProject}
+              onUpdateProject={handleUpdateProject}
+              onDeleteProject={handleDeleteProject}
             />
           </div>
         )}
@@ -231,11 +244,12 @@ export default function OrbitWorkspace() {
         {activeSection === 'settings' && (
           <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
             <SettingsView
-              userApiKey={userApiKey} onUpdateApiKey={setUserApiKey} isLive={isLive}
-              hasSampleData={hasSampleData} user={user} authLoading={authLoading}
-              onSignIn={signIn} onSignOut={signOut} onMigrateToCloud={handleMigrateDemoToCloud}
-              onLoadSampleData={handleLoadSampleData} onRemoveSampleData={handleRemoveSampleData}
-              onResetDemo={handleResetDemo}
+              userApiKey={userApiKey} onUpdateApiKey={setUserApiKey}
+              isFirebaseReady={isFirebaseReady} user={user} authLoading={authLoading}
+              onSignIn={signIn} onSignOut={signOut}
+              onImportLocalToAccount={handleImportLocalToAccount}
+              onClearLocalData={handleClearLocalData}
+              onExportJson={handleExportJson} onImportJson={handleImportJson}
             />
           </div>
         )}
@@ -245,7 +259,7 @@ export default function OrbitWorkspace() {
 
       <AskAIDrawer
         opportunity={selectedAiOpp} allProjects={projects} userApiKey={userApiKey}
-        firebaseUser={user}
+        firebaseUser={user} canUseAi={canUseAi} onSignIn={signIn}
         onClose={() => setSelectedAiOppId(null)} onSendMessage={handleAddAiMessage}
         onClearHistory={handleClearAiHistory}
       />
@@ -271,7 +285,11 @@ export default function OrbitWorkspace() {
       />
 
       <ShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <UndoToast undoAction={undoAction} onUndo={() => { undoAction?.restore(); setUndoAction(null); }} />
+      <UndoToast
+        undoAction={undoAction}
+        onUndo={() => { undoAction?.restore(); setUndoAction(null); }}
+        onDismiss={() => setUndoAction(null)}
+      />
       <ErrorToast message={errorToast} onDismiss={() => setErrorToast(null)} />
     </div>
   );
