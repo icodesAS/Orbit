@@ -21,6 +21,7 @@ export default function SettingsView({
   hasSampleData,
   onLoadSampleData,
   onRemoveSampleData,
+  onResetDemo,
 }: SettingsViewProps) {
   const [tempKey, setTempKey] = useState(userApiKey);
   const [savedNotice, setSavedNotice] = useState(false);
@@ -52,7 +53,7 @@ export default function SettingsView({
         </div>
 
         {!isLive && (
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             <button
               type="button"
               onClick={onLoadSampleData}
@@ -69,6 +70,20 @@ export default function SettingsView({
               >
                 <Trash2 className="w-3.5 h-3.5 text-[#B54708]" />
                 <span>Remove sample data</span>
+              </button>
+            )}
+            {onResetDemo && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Reset Demo workspace? This clears all local opportunities and data.')) {
+                    onResetDemo();
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#FEE4E2] border border-[#E5E5E1] hover:border-[#FECDCA] text-[#6B7280] hover:text-[#D92D20] font-mono text-xs whitespace-nowrap shrink-0 transition-colors shadow-2xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Demo</span>
               </button>
             )}
           </div>

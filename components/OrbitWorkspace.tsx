@@ -21,7 +21,8 @@ import UndoToast from './UndoToast';
 
 export default function OrbitWorkspace() {
   const {
-    opportunities, projects, projectsMap, activeRadarItems, counts,
+    opportunities, projects, projectsMap, activeRadarItems,
+    selectedRadarDate, setSelectedRadarDate, availableRadarDates, counts,
     nextCodeNumber, userApiKey, setUserApiKey, isLive, hasSampleData,
     undoAction, setUndoAction, updateOpportunities, handleResetDemo,
     handleLoadSampleData, handleRemoveSampleData, handleCreateOpportunity,
@@ -34,8 +35,8 @@ export default function OrbitWorkspace() {
   const [activeSection, setActiveSection] = useState<NavSection>('today');
   const [selectedFocusedId, setSelectedFocusedId] = useState<string | null>(null);
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
-  const [selectedAiOpp, setSelectedAiOpp] = useState<Opportunity | null>(null);
-  const [editingOpp, setEditingOpp] = useState<Opportunity | null>(null);
+  const [selectedAiOppId, setSelectedAiOppId] = useState<string | null>(null);
+  const [editingOppId, setEditingOppId] = useState<string | null>(null);
   const [activeProjectPickerOppId, setActiveProjectPickerOppId] = useState<string | null>(null);
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -44,9 +45,11 @@ export default function OrbitWorkspace() {
 
   const isMounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   const focusedId = selectedFocusedId || opportunities[0]?.id || null;
+  const selectedAiOpp = opportunities.find((o) => o.id === selectedAiOppId) || null;
+  const editingOpp = opportunities.find((o) => o.id === editingOppId) || null;
 
-  const onPromoteAndFocus = (item: any) => {
-    const newId = handlePromoteRadarItem(item);
+  const onPromoteAndFocus = (item: any, confirmedDeadline?: string | null, selectedProjectId?: string | null) => {
+    const newId = handlePromoteRadarItem(item, confirmedDeadline || undefined, selectedProjectId);
     setActiveSection('pipeline');
     setSelectedFocusedId(newId);
   };
@@ -57,8 +60,8 @@ export default function OrbitWorkspace() {
         setIsCommandPaletteOpen(false);
         setIsNewModalOpen(false);
         setIsShortcutsOpen(false);
-        setSelectedAiOpp(null);
-        setEditingOpp(null);
+        setSelectedAiOppId(null);
+        setEditingOppId(null);
         setActiveProjectPickerOppId(null);
         return;
       }
@@ -85,9 +88,9 @@ export default function OrbitWorkspace() {
         if (key === 'j') { e.preventDefault(); const n = (curr + 1) % visible.length; if (visible[n]) setSelectedFocusedId(visible[n].id); }
         else if (key === 'k') { e.preventDefault(); const p = (curr - 1 + visible.length) % visible.length; if (visible[p]) setSelectedFocusedId(visible[p].id); }
         else if (key === 'enter' || e.code === 'Space') { e.preventDefault(); setExpandedMap((prev) => ({ ...prev, [focusedId]: !prev[focusedId] })); }
-        else if (key === 'e') { e.preventDefault(); const opp = opportunities.find((o) => o.id === focusedId); if (opp) setEditingOpp(opp); }
+        else if (key === 'e') { e.preventDefault(); setEditingOppId(focusedId); }
         else if (key === 'p') { e.preventDefault(); setActiveProjectPickerOppId((prev) => (prev === focusedId ? null : focusedId)); }
-        else if (key === 'a') { e.preventDefault(); const opp = opportunities.find((o) => o.id === focusedId); if (opp) setSelectedAiOpp(opp); }
+        else if (key === 'a') { e.preventDefault(); setSelectedAiOppId(focusedId); }
         else if (key === 's') { e.preventDefault(); handleAdvanceStatus(focusedId); }
       }
     };
@@ -108,7 +111,6 @@ export default function OrbitWorkspace() {
       updatedAt: new Date().toISOString(),
     } : o));
   };
-
   const handleClearAiHistory = (oppId: string) => {
     updateOpportunities((prev) => prev.map((o) => (o.id === oppId ? { ...o, aiChat: [] } : o)));
   };
@@ -118,12 +120,8 @@ export default function OrbitWorkspace() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F5F5F3] text-[#16181D] font-sans select-none">
       <Sidebar
-        activeSection={activeSection}
-        onSelectSection={setActiveSection}
-        counts={counts}
-        isLive={isLive}
-        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-        onOpenNewModal={() => setIsNewModalOpen(true)}
+        activeSection={activeSection} onSelectSection={setActiveSection} counts={counts} isLive={isLive}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} onOpenNewModal={() => setIsNewModalOpen(true)}
         onOpenShortcutsModal={() => setIsShortcutsOpen(true)}
       />
 
@@ -146,7 +144,7 @@ export default function OrbitWorkspace() {
               isLive={isLive}
               hasSampleData={hasSampleData}
               onFocusOpportunity={setSelectedFocusedId}
-              onOpenAskAI={setSelectedAiOpp}
+              onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
               onAdvanceStatus={handleAdvanceStatus}
               onJumpToRadar={() => setActiveSection('radar')}
               onOpenNewModal={() => setIsNewModalOpen(true)}
@@ -185,13 +183,13 @@ export default function OrbitWorkspace() {
                   allProjects={projects}
                   focusedId={focusedId}
                   expandedMap={expandedMap}
-                  selectedAiOppId={selectedAiOpp?.id || null}
+                  selectedAiOppId={selectedAiOppId}
                   activeProjectPickerOppId={activeProjectPickerOppId}
                   onFocusOpportunity={setSelectedFocusedId}
                   onToggleExpand={(id) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }))}
-                  onOpenEdit={setEditingOpp}
+                  onOpenEdit={(opp) => setEditingOppId(opp.id)}
                   onToggleProjectPicker={(id) => setActiveProjectPickerOppId((prev) => (prev === id ? null : id))}
-                  onOpenAskAI={setSelectedAiOpp}
+                  onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
                   onAdvanceStatus={handleAdvanceStatus}
                   onToggleProjectLink={handleToggleProjectLink}
                   onToggleSubTask={handleToggleSubTask}
@@ -208,9 +206,13 @@ export default function OrbitWorkspace() {
             <RadarView
               radarItems={activeRadarItems}
               projectsMap={projectsMap}
+              allProjects={projects}
+              availableDates={availableRadarDates}
+              selectedDate={selectedRadarDate}
+              onSelectDate={setSelectedRadarDate}
               isLive={isLive}
               hasSampleData={hasSampleData}
-              onPromoteRadarItem={onPromoteAndFocus}
+              onConfirmTrack={onPromoteAndFocus}
               onToggleVerifyRadarItem={handleToggleVerifyRadarItem}
               onLoadSampleData={handleLoadSampleData}
             />
@@ -252,7 +254,7 @@ export default function OrbitWorkspace() {
         opportunity={selectedAiOpp}
         allProjects={projects}
         userApiKey={userApiKey}
-        onClose={() => setSelectedAiOpp(null)}
+        onClose={() => setSelectedAiOppId(null)}
         onSendMessage={handleAddAiMessage}
         onClearHistory={handleClearAiHistory}
       />
@@ -264,8 +266,8 @@ export default function OrbitWorkspace() {
         projects={projects}
         focusedOpportunity={focusedOpp}
         onSelectOpportunity={(opp) => { setSelectedFocusedId(opp.id); setActiveSection('pipeline'); }}
-        onOpenAskAI={(opp) => setSelectedAiOpp(opp)}
-        onOpenEdit={(opp) => setEditingOpp(opp)}
+        onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
+        onOpenEdit={(opp) => setEditingOppId(opp.id)}
         onAdvanceStatus={handleAdvanceStatus}
         onToggleProjectLink={handleToggleProjectLink}
         onOpenNewModal={() => setIsNewModalOpen(true)}
@@ -283,7 +285,7 @@ export default function OrbitWorkspace() {
       <EditOpportunityModal
         isOpen={Boolean(editingOpp)}
         opportunity={editingOpp}
-        onClose={() => setEditingOpp(null)}
+        onClose={() => setEditingOppId(null)}
         onSave={handleUpdateOpportunity}
       />
 

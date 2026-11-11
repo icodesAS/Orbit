@@ -29,9 +29,9 @@ interface AskAIDrawerProps {
 }
 
 const TACTICAL_PROMPTS = [
-  'Draft an application abstract tailored to linked projects',
-  'Review eligibility criteria & identify potential blockers',
-  'Generate a final submission verification checklist',
+  'Draft an answer',
+  'Check eligibility from the source',
+  'Make a submission checklist',
 ];
 
 export default function AskAIDrawer({
@@ -118,6 +118,12 @@ export default function AskAIDrawer({
             : { type: 'spring', stiffness: 400, damping: 36, mass: 0.8 }
         }
         aria-label="Scoped Ask AI Drawer"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
         className="fixed inset-y-0 right-0 w-full md:w-[42%] lg:w-[40%] max-w-2xl bg-white border-l border-[#E5E5E1] shadow-2xl z-40 flex flex-col select-none"
       >
         <div className="px-5 py-3.5 border-b border-[#E5E5E1] flex items-center justify-between gap-3 bg-white">

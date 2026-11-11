@@ -35,10 +35,7 @@ export function createDemoOpportunities(nowMs: number): Opportunity[] {
         { id: 't-101-3', title: 'SAMPLE: Run test latency suite across test cases', done: true, sortOrder: 3, createdAt: hoursFromNow(-18) },
         { id: 't-101-4', title: 'SAMPLE: Submit final grant dossier on portal', done: false, sortOrder: 4, createdAt: hoursFromNow(-2) },
       ],
-      aiChat: [
-        { id: 'm-101-1', role: 'user', content: 'How should I summarize Sample Project A for this grant?', createdAt: '2h ago' },
-        { id: 'm-101-2', role: 'assistant', content: 'Focus on the 200ms latency guarantee and automated regression verification.', createdAt: '2h ago' },
-      ],
+      aiChat: [],
     },
     {
       id: 'opp-sample-102',

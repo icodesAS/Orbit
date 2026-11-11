@@ -3,73 +3,86 @@
 import React, { useState } from 'react';
 import { RadarItem, ArsenalProject, RadarPriority } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
+import TrackRadarItemModal from './TrackRadarItemModal';
 import {
   Radar,
   ExternalLink,
   CheckCircle2,
   AlertCircle,
   ArrowUpRight,
-  ShieldAlert,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
 } from 'lucide-react';
 
 interface RadarViewProps {
   radarItems: RadarItem[];
   projectsMap: Record<string, ArsenalProject>;
-  currentDate?: string;
+  allProjects: ArsenalProject[];
+  availableDates?: string[];
+  selectedDate?: string;
+  onSelectDate?: (date: string) => void;
   isLive?: boolean;
   hasSampleData?: boolean;
-  onPromoteRadarItem: (item: RadarItem) => void;
+  onConfirmTrack: (item: RadarItem, confirmedDeadlineIso: string | null, projectId: string | null) => void;
   onToggleVerifyRadarItem: (id: string) => void;
   onLoadSampleData?: () => void;
 }
 
 const PRIORITY_HEADINGS: Record<RadarPriority, { title: string; subtitle: string }> = {
-  '1A': {
-    title: '1A · Campus Ambassador & Lead Roles',
-    subtitle: 'High-leverage leadership and campus advocacy programs',
-  },
-  '1B': {
-    title: '1B · Residencies, Fellowships & Research',
-    subtitle: 'Independent research grants, stipends, and builder cohorts',
-  },
-  '1C': {
-    title: '1C · Hackathons & Internships',
-    subtitle: 'Competitive sprint builds, prize bounties, and technical sprints',
-  },
-  '2': {
-    title: '2 · Free Credits & Developer Perks',
-    subtitle: 'Cloud vouchers, GPU allocations, and developer tier perks',
-  },
+  '1A': { title: '1A · Campus Ambassador & Lead Roles', subtitle: 'Leadership and campus advocacy programs' },
+  '1B': { title: '1B · Residencies, Fellowships & Research', subtitle: 'Independent research grants, stipends, and builder cohorts' },
+  '1C': { title: '1C · Hackathons & Internships', subtitle: 'Sprint builds, prize bounties, and technical sprints' },
+  '2': { title: '2 · Free Credits & Developer Perks', subtitle: 'Cloud vouchers, GPU allocations, and developer perks' },
 };
 
 export default function RadarView({
   radarItems,
   projectsMap,
-  currentDate,
+  allProjects,
+  availableDates = [],
+  selectedDate,
+  onSelectDate,
   isLive = false,
   hasSampleData = false,
-  onPromoteRadarItem,
+  onConfirmTrack,
   onToggleVerifyRadarItem,
   onLoadSampleData,
 }: RadarViewProps) {
   const [openedUrls, setOpenedUrls] = useState<Record<string, boolean>>({});
+  const [trackingItem, setTrackingItem] = useState<RadarItem | null>(null);
 
-  const displayDate = currentDate || new Date().toLocaleDateString(undefined, {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  const currentDateStr = selectedDate || availableDates[0] || new Date().toISOString().split('T')[0];
 
   const handleOpenSource = (item: RadarItem) => {
     setOpenedUrls((prev) => ({ ...prev, [item.id]: true }));
     window.open(item.url, '_blank', 'noopener,noreferrer');
   };
 
+  const handlePrevDate = () => {
+    if (!onSelectDate || availableDates.length <= 1) return;
+    const idx = availableDates.indexOf(currentDateStr);
+    if (idx > 0) onSelectDate(availableDates[idx - 1]);
+  };
+
+  const handleNextDate = () => {
+    if (!onSelectDate || availableDates.length <= 1) return;
+    const idx = availableDates.indexOf(currentDateStr);
+    if (idx >= 0 && idx < availableDates.length - 1) onSelectDate(availableDates[idx + 1]);
+  };
+
+  const formattedDate = new Date(currentDateStr + 'T12:00:00').toLocaleDateString(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
   const priorities: RadarPriority[] = ['1A', '1B', '1C', '2'];
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      {/* Top Header & Local Timezone Date Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E5E5E1]">
         <div>
           <div className="flex items-center gap-2">
@@ -77,17 +90,38 @@ export default function RadarView({
             <h1 className="text-xl font-semibold text-[#16181D]">
               Daily <span className="font-serif italic font-normal text-[#4355B9]">Opportunity Radar</span>
             </h1>
-            <span className="font-mono text-xs text-[#6B7280]">
-              · {displayDate}
-            </span>
           </div>
           <p className="text-xs text-[#6B7280] mt-1">
-            Read-only daily digest. Open the source link to enable verification. Click Track to confirm deadline and copy into your Pipeline.
+            Read-only morning digest. Open source link to unlock verification. Click Track to confirm deadline & copy into pipeline.
           </p>
         </div>
 
-        <div className="font-mono text-[11px] text-[#6B7280] tabular-nums shrink-0">
-          LOCAL TIMEZONE
+        {/* Date Switcher */}
+        <div className="flex items-center gap-2 bg-white border border-[#E5E5E1] rounded-lg p-1 shadow-2xs self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handlePrevDate}
+            disabled={availableDates.indexOf(currentDateStr) <= 0}
+            title="Previous digest"
+            className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-1.5 px-2 font-mono text-xs text-[#16181D]">
+            <Calendar className="w-3.5 h-3.5 text-[#4355B9]" />
+            <span>{formattedDate}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleNextDate}
+            disabled={availableDates.indexOf(currentDateStr) >= availableDates.length - 1}
+            title="Next digest"
+            className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -135,98 +169,103 @@ export default function RadarView({
                     {items.map((item) => {
                       const deadlineInfo = getDeadlineInfo(item.deadline);
                       const recProject = item.recommendedProjectId ? projectsMap[item.recommendedProjectId] : null;
+                      const fitsLabel = recProject ? recProject.title : 'Fresh';
                       const canVerify = item.verified || openedUrls[item.id];
 
                       return (
                         <div
                           key={item.id}
-                          className="p-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:bg-[#FAFAFA] transition-colors"
+                          className="px-4 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs hover:bg-[#FAFAFA] transition-colors"
                         >
-                          <div className="space-y-1.5 flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-xs text-[#6B7280]">
-                                {item.organization}
-                              </span>
-                              <span className="text-[#E5E5E1]">·</span>
-                              <h3 className="text-xs font-semibold text-[#16181D]">
-                                {item.title}
-                              </h3>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenSource(item)}
-                                className="inline-flex items-center gap-1 font-mono text-[11px] text-[#4355B9] hover:underline cursor-pointer"
-                                title="Open original source URL"
-                              >
-                                <span>Source ({item.source})</span>
-                                <ExternalLink className="w-3 h-3" />
-                              </button>
-                            </div>
-
-                            <p className="text-xs text-[#16181D] leading-relaxed">
-                              {item.summary}
-                            </p>
-
-                            <div className="flex items-center gap-2.5 pt-1 text-[11px] font-mono text-[#6B7280] flex-wrap">
-                              <span>TYPE: {item.type}</span>
-                              <span className="text-[#E5E5E1]">·</span>
-                              <span>
-                                DEADLINE: {deadlineInfo.relativeLabel} ({deadlineInfo.absoluteLabel})
-                              </span>
-                              {recProject && (
-                                <>
-                                  <span className="text-[#E5E5E1]">·</span>
-                                  <span className="text-[#4355B9] font-medium">
-                                    MATCH: {recProject.title}
-                                  </span>
-                                </>
-                              )}
-                              <span className="text-[#E5E5E1]">·</span>
-                              {item.verified ? (
-                                <button
-                                  type="button"
-                                  onClick={() => onToggleVerifyRadarItem(item.id)}
-                                  className="inline-flex items-center gap-1 text-[#067647] hover:opacity-80 transition-opacity bg-[#ECFDF3] border border-[#D1FADF] px-1.5 py-0.2 rounded"
-                                  title="Click to unverify"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>VERIFIED</span>
-                                </button>
-                              ) : canVerify ? (
-                                <button
-                                  type="button"
-                                  onClick={() => onToggleVerifyRadarItem(item.id)}
-                                  className="inline-flex items-center gap-1 text-[#B54708] hover:opacity-80 transition-opacity bg-[#FEF0C7] border border-[#FEDF89] px-1.5 py-0.2 rounded"
-                                  title="Source link opened. Click to mark verified."
-                                >
-                                  <AlertCircle className="w-3.5 h-3.5" />
-                                  <span>MARK VERIFIED</span>
-                                </button>
-                              ) : (
-                                <span
-                                  className="inline-flex items-center gap-1 text-[#6B7280] cursor-not-allowed text-[10px]"
-                                  title="Open the source link first to enable verification"
-                                >
-                                  <ShieldAlert className="w-3.5 h-3.5 text-[#6B7280]" />
-                                  <span>UNVERIFIED (OPEN SOURCE TO VERIFY)</span>
-                                </span>
-                              )}
-                            </div>
+                          {/* Name & Org */}
+                          <div className="min-w-0 flex-1 flex items-baseline gap-2">
+                            <span className="font-mono text-[11px] text-[#6B7280] shrink-0">
+                              {item.organization}
+                            </span>
+                            <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
+                            <span className="font-medium text-[#16181D] truncate" title={item.title}>
+                              {item.title}
+                            </span>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
+                          {/* Deadline, Fits, Source link, Verify, Track */}
+                          <div className="flex items-center gap-3 font-mono text-[11px] shrink-0 justify-between md:justify-end flex-wrap">
+                            {/* Deadline */}
+                            <span className="text-[#6B7280] whitespace-nowrap" title={item.deadline || undefined}>
+                              {deadlineInfo.relativeLabel}
+                            </span>
+
+                            <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
+
+                            {/* Fits */}
+                            <span
+                              className={`whitespace-nowrap ${
+                                recProject ? 'text-[#4355B9] font-medium' : 'text-[#6B7280]'
+                              }`}
+                              title={recProject ? `Fits: ${recProject.title}` : 'No project linked yet'}
+                            >
+                              {fitsLabel}
+                            </span>
+
+                            <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
+
+                            {/* Source Link */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenSource(item)}
+                              className="inline-flex items-center gap-1 text-[#4355B9] hover:underline whitespace-nowrap"
+                              title="Open source link in new tab"
+                            >
+                              <span>Source</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </button>
+
+                            <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
+
+                            {/* Verify Button */}
+                            {item.verified ? (
+                              <button
+                                type="button"
+                                onClick={() => onToggleVerifyRadarItem(item.id)}
+                                className="inline-flex items-center gap-1 text-[#067647] bg-[#ECFDF3] border border-[#D1FADF] px-1.5 py-0.5 rounded text-[10px]"
+                                title="Click to unverify"
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Verified</span>
+                              </button>
+                            ) : canVerify ? (
+                              <button
+                                type="button"
+                                onClick={() => onToggleVerifyRadarItem(item.id)}
+                                className="inline-flex items-center gap-1 text-[#B54708] bg-[#FEF0C7] border border-[#FEDF89] px-1.5 py-0.5 rounded hover:bg-[#FEE4E2] transition-colors text-[10px]"
+                                title="Source link opened. Click to mark verified."
+                              >
+                                <AlertCircle className="w-3 h-3" />
+                                <span>Mark verified</span>
+                              </button>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 text-[#6B7280] bg-[#F5F5F3] border border-[#E5E5E1] px-1.5 py-0.5 rounded text-[10px] cursor-not-allowed opacity-75"
+                                title="Open the source link first to enable verification"
+                              >
+                                <span>Unverified</span>
+                              </span>
+                            )}
+
+                            {/* Track Button */}
                             {item.promoted ? (
-                              <span className="px-3 py-1 rounded-lg bg-[#ECFDF3] border border-[#D1FADF] font-mono text-xs text-[#067647] flex items-center gap-1.5">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span className="px-2.5 py-1 rounded bg-[#ECFDF3] border border-[#D1FADF] text-[#067647] flex items-center gap-1 text-[11px]">
+                                <CheckCircle2 className="w-3 h-3" />
                                 <span>Promoted</span>
                               </span>
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => onPromoteRadarItem(item)}
-                                className="px-3 py-1 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-white font-mono text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 shadow-2xs"
+                                onClick={() => setTrackingItem(item)}
+                                className="px-2.5 py-1 rounded bg-[#4355B9] hover:bg-[#3848A3] text-white flex items-center gap-1 transition-colors whitespace-nowrap shadow-2xs text-[11px] font-medium"
                               >
                                 <span>Track</span>
-                                <ArrowUpRight className="w-3.5 h-3.5" />
+                                <ArrowUpRight className="w-3 h-3" />
                               </button>
                             )}
                           </div>
@@ -240,6 +279,18 @@ export default function RadarView({
           })}
         </div>
       )}
+
+      {/* Confirmation Modal to Confirm Deadline and Track into Pipeline */}
+      <TrackRadarItemModal
+        isOpen={Boolean(trackingItem)}
+        item={trackingItem}
+        allProjects={allProjects}
+        onClose={() => setTrackingItem(null)}
+        onConfirmTrack={(item, confirmedDeadline, projId) => {
+          onConfirmTrack(item, confirmedDeadline, projId);
+          setTrackingItem(null);
+        }}
+      />
     </div>
   );
 }

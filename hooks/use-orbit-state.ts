@@ -27,9 +27,17 @@ export function useOrbitState() {
     return map;
   }, [projectsWithCounts]);
 
+  const [selectedRadarDate, setSelectedRadarDate] = useState<string>('');
+
+  const availableRadarDates: string[] = useMemo(() => radarDays.map((d: any) => d.date), [radarDays]);
+  const activeDay = useMemo(() => {
+    if (!radarDays || radarDays.length === 0) return null;
+    return (selectedRadarDate && radarDays.find((d: any) => d.date === selectedRadarDate)) || radarDays[0];
+  }, [radarDays, selectedRadarDate]);
+
   const activeRadarItems: RadarItem[] = useMemo(() => {
-    return radarDays.length > 0 && Array.isArray(radarDays[0].items) ? radarDays[0].items : [];
-  }, [radarDays]);
+    return activeDay && Array.isArray(activeDay.items) ? activeDay.items : [];
+  }, [activeDay]);
 
   const counts = useMemo(() => {
     const activePipeline = opportunities.filter((o) => o.status !== 'archived').length;
@@ -84,11 +92,12 @@ export function useOrbitState() {
   }, [store]);
 
   const handleResetDemo = useCallback(() => {
-    const nextState = store.loadState();
-    setOpportunities(nextState.opportunities);
-    setProjects(nextState.projects);
-    setRadarDays(nextState.radarDays);
-    setIsLive(nextState.isLive);
+    store.saveOpportunities([]);
+    store.saveProjects([]);
+    store.saveRadarDays([]);
+    setOpportunities([]);
+    setProjects([]);
+    setRadarDays([]);
   }, [store]);
 
   const handleCreateOpportunity = useCallback((newOpp: Opportunity) => {
@@ -168,8 +177,11 @@ export function useOrbitState() {
     );
   }, [updateOpportunities]);
 
-  const handlePromoteRadarItem = useCallback((item: RadarItem) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+  const handlePromoteRadarItem = useCallback((item: RadarItem, confirmedDeadlineIso?: string, selectedProjectId?: string | null) => {
+    const activeDate = activeDay?.date || new Date().toISOString().split('T')[0];
+    const projectIds = selectedProjectId !== undefined
+      ? (selectedProjectId ? [selectedProjectId] : [])
+      : (item.recommendedProjectId ? [item.recommendedProjectId] : []);
     const newOpp: Opportunity = {
       id: `opp-${Date.now()}`,
       code: `ORB-${String(nextCodeNumber).padStart(2, '0')}`,
@@ -177,16 +189,16 @@ export function useOrbitState() {
       organization: item.organization,
       type: item.type,
       status: 'active',
-      deadline: item.deadline,
+      deadline: confirmedDeadlineIso || item.deadline,
       progress: 0,
       tasksDone: 0,
       tasksTotal: 1,
-      projectIds: item.recommendedProjectId ? [item.recommendedProjectId] : [],
+      projectIds,
       url: item.url,
       urlHash: item.urlHash,
       applicationCopy: item.summary,
-      notes: `Promoted from Radar (${todayStr})`,
-      sourceRadarDate: todayStr,
+      notes: `Promoted from Radar (${activeDate})`,
+      sourceRadarDate: activeDate,
       isSample: Boolean(item.isSample),
       sortOrder: 0,
       createdAt: new Date().toISOString(),
@@ -205,7 +217,7 @@ export function useOrbitState() {
       return next;
     });
     return newOpp.id;
-  }, [nextCodeNumber, store, updateOpportunities]);
+  }, [activeDay, nextCodeNumber, store, updateOpportunities]);
 
   const handleToggleVerifyRadarItem = useCallback((itemId: string) => {
     setRadarDays((prev) => {
@@ -247,43 +259,18 @@ export function useOrbitState() {
       return next;
     });
     updateOpportunities((prev) =>
-      prev.map((o) => o.projectIds.includes(projectId)
-        ? { ...o, projectIds: o.projectIds.filter((id) => id !== projectId) }
-        : o
-      )
+      prev.map((o) => o.projectIds.includes(projectId) ? { ...o, projectIds: o.projectIds.filter((id) => id !== projectId) } : o)
     );
   }, [store, updateOpportunities]);
 
   return {
-    isLoaded: true,
-    opportunities,
-    projects: projectsWithCounts,
-    projectsMap,
-    radarDays,
-    activeRadarItems,
-    counts,
-    nextCodeNumber,
-    userApiKey,
-    setUserApiKey,
-    isLive,
-    hasSampleData,
-    undoAction,
-    setUndoAction,
-    updateOpportunities,
-    handleResetDemo,
-    handleLoadSampleData,
-    handleRemoveSampleData,
-    handleCreateOpportunity,
-    handleUpdateOpportunity,
-    handleAdvanceStatus,
-    handleArchive,
-    handleToggleSubTask,
-    handleAddSubTask,
-    handleToggleProjectLink,
-    handlePromoteRadarItem,
-    handleToggleVerifyRadarItem,
-    handleAddProject,
-    handleUpdateProject,
-    handleDeleteProject,
+    isLoaded: true, opportunities, projects: projectsWithCounts, projectsMap, radarDays,
+    activeRadarItems, selectedRadarDate, setSelectedRadarDate, availableRadarDates,
+    counts, nextCodeNumber, userApiKey, setUserApiKey, isLive, hasSampleData,
+    undoAction, setUndoAction, updateOpportunities, handleResetDemo, handleLoadSampleData,
+    handleRemoveSampleData, handleCreateOpportunity, handleUpdateOpportunity,
+    handleAdvanceStatus, handleArchive, handleToggleSubTask, handleAddSubTask,
+    handleToggleProjectLink, handlePromoteRadarItem, handleToggleVerifyRadarItem,
+    handleAddProject, handleUpdateProject, handleDeleteProject,
   };
 }
