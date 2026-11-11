@@ -13,9 +13,9 @@ import {
   Radar,
   FolderGit2,
   SlidersHorizontal,
-  LayoutGrid,
   List,
   Link2,
+  Edit2,
 } from 'lucide-react';
 
 interface CommandPaletteProps {
@@ -26,11 +26,11 @@ interface CommandPaletteProps {
   focusedOpportunity: Opportunity | null;
   onSelectOpportunity: (opp: Opportunity) => void;
   onOpenAskAI: (opp: Opportunity) => void;
+  onOpenEdit?: (opp: Opportunity) => void;
   onAdvanceStatus: (id: string) => void;
   onToggleProjectLink: (oppId: string, projectId: string) => void;
   onOpenNewModal: () => void;
   onSelectSection: (section: NavSection) => void;
-  onToggleViewMode: () => void;
 }
 
 interface CommandItem {
@@ -51,11 +51,11 @@ export default function CommandPalette({
   focusedOpportunity,
   onSelectOpportunity,
   onOpenAskAI,
+  onOpenEdit,
   onAdvanceStatus,
   onToggleProjectLink,
   onOpenNewModal,
   onSelectSection,
-  onToggleViewMode,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -73,6 +73,15 @@ export default function CommandPalette({
 
     if (focusedOpportunity) {
       list.push(
+        {
+          id: `ctx-edit-${focusedOpportunity.id}`,
+          category: `Focused (${focusedOpportunity.code})`,
+          label: `Edit Opportunity: ${focusedOpportunity.title}`,
+          sublabel: 'Title, URL, deadline, notes, application copy',
+          shortcut: 'E',
+          icon: Edit2,
+          action: () => { if (onOpenEdit) onOpenEdit(focusedOpportunity); onClose(); },
+        },
         {
           id: `ctx-ai-${focusedOpportunity.id}`,
           category: `Focused (${focusedOpportunity.code})`,
@@ -177,7 +186,7 @@ export default function CommandPalette({
       });
 
     return list;
-  }, [focusedOpportunity, opportunities, projects, onAdvanceStatus, onClose, onOpenAskAI, onOpenNewModal, onSelectOpportunity, onSelectSection, onToggleProjectLink]);
+  }, [focusedOpportunity, opportunities, projects, onAdvanceStatus, onClose, onOpenAskAI, onOpenEdit, onOpenNewModal, onSelectOpportunity, onSelectSection, onToggleProjectLink]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return commands;

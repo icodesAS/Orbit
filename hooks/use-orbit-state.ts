@@ -14,11 +14,18 @@ export function useOrbitState() {
   const [isLive, setIsLive] = useState(() => initialState.isLive);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
+  const projectsWithCounts: ArsenalProject[] = useMemo(() => {
+    return projects.map((p) => ({
+      ...p,
+      usedInCount: opportunities.filter((o) => o.projectIds.includes(p.id)).length,
+    }));
+  }, [projects, opportunities]);
+
   const projectsMap = useMemo(() => {
     const map: Record<string, ArsenalProject> = {};
-    projects.forEach((p) => { map[p.id] = p; });
+    projectsWithCounts.forEach((p) => { map[p.id] = p; });
     return map;
-  }, [projects]);
+  }, [projectsWithCounts]);
 
   const activeRadarItems: RadarItem[] = useMemo(() => {
     return radarDays.length > 0 && Array.isArray(radarDays[0].items) ? radarDays[0].items : [];
@@ -91,17 +98,14 @@ export function useOrbitState() {
   const handleAdvanceStatus = useCallback((id: string) => {
     const opp = opportunities.find((o) => o.id === id);
     if (!opp) return;
-
     const previousStatus = opp.status;
     let nextStatus: OpportunityStatus = 'active';
     if (previousStatus === 'active') nextStatus = 'submitted';
-    else if (previousStatus === 'waitlist') nextStatus = 'active';
-    else if (previousStatus === 'submitted') nextStatus = 'active';
+    else if (previousStatus === 'waitlist' || previousStatus === 'submitted') nextStatus = 'active';
 
     updateOpportunities((prev) =>
       prev.map((o) => o.id === id ? { ...o, status: nextStatus, updatedAt: new Date().toISOString() } : o)
     );
-
     setUndoAction({
       id: `undo-${Date.now()}`,
       message: `Updated ${opp.code} status to ${nextStatus}`,
@@ -117,19 +121,13 @@ export function useOrbitState() {
   const handleArchive = useCallback((id: string) => {
     const opp = opportunities.find((o) => o.id === id);
     if (!opp) return;
-
-    updateOpportunities((prev) =>
-      prev.map((o) => o.id === id ? { ...o, status: 'archived' } : o)
-    );
-
+    updateOpportunities((prev) => prev.map((o) => o.id === id ? { ...o, status: 'archived' } : o));
     setUndoAction({
       id: `undo-${Date.now()}`,
       message: `Archived ${opp.code}`,
       timestamp: Date.now(),
       restore: () => {
-        updateOpportunities((prev) =>
-          prev.map((o) => o.id === id ? { ...o, status: opp.status } : o)
-        );
+        updateOpportunities((prev) => prev.map((o) => o.id === id ? { ...o, status: opp.status } : o));
       },
     });
   }, [opportunities, updateOpportunities]);
@@ -141,8 +139,7 @@ export function useOrbitState() {
         const tasks = o.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t));
         const done = tasks.filter((t) => t.done).length;
         const total = tasks.length;
-        const progress = total > 0 ? Math.round((done / total) * 100) : 0;
-        return { ...o, tasks, tasksDone: done, tasksTotal: total, progress, updatedAt: new Date().toISOString() };
+        return { ...o, tasks, tasksDone: done, tasksTotal: total, progress: total > 0 ? Math.round((done / total) * 100) : 0, updatedAt: new Date().toISOString() };
       })
     );
   }, [updateOpportunities]);
@@ -151,18 +148,11 @@ export function useOrbitState() {
     updateOpportunities((prev) =>
       prev.map((o) => {
         if (o.id !== oppId) return o;
-        const newTask = {
-          id: `t-${Date.now()}`,
-          title,
-          done: false,
-          sortOrder: o.tasks.length + 1,
-          createdAt: new Date().toISOString(),
-        };
+        const newTask = { id: `t-${Date.now()}`, title, done: false, sortOrder: o.tasks.length + 1, createdAt: new Date().toISOString() };
         const tasks = [...o.tasks, newTask];
         const done = tasks.filter((t) => t.done).length;
         const total = tasks.length;
-        const progress = total > 0 ? Math.round((done / total) * 100) : 0;
-        return { ...o, tasks, tasksDone: done, tasksTotal: total, progress, updatedAt: new Date().toISOString() };
+        return { ...o, tasks, tasksDone: done, tasksTotal: total, progress: total > 0 ? Math.round((done / total) * 100) : 0, updatedAt: new Date().toISOString() };
       })
     );
   }, [updateOpportunities]);
@@ -202,20 +192,10 @@ export function useOrbitState() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastActivityAt: 'just now',
-      tasks: [
-        {
-          id: `t-${Date.now()}`,
-          title: 'Confirm program deadline and review deliverables',
-          done: false,
-          sortOrder: 1,
-          createdAt: new Date().toISOString(),
-        },
-      ],
+      tasks: [{ id: `t-${Date.now()}`, title: 'Confirm program deadline and review deliverables', done: false, sortOrder: 1, createdAt: new Date().toISOString() }],
       aiChat: [],
     };
-
     updateOpportunities((prev) => [newOpp, ...prev]);
-
     setRadarDays((prev) => {
       const next = prev.map((day) => ({
         ...day,
@@ -224,7 +204,6 @@ export function useOrbitState() {
       store.saveRadarDays(next);
       return next;
     });
-
     return newOpp.id;
   }, [nextCodeNumber, store, updateOpportunities]);
 
@@ -239,6 +218,12 @@ export function useOrbitState() {
     });
   }, [store]);
 
+  const handleUpdateOpportunity = useCallback((updated: Opportunity) => {
+    updateOpportunities((prev) =>
+      prev.map((o) => (o.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : o))
+    );
+  }, [updateOpportunities]);
+
   const handleAddProject = useCallback((newProj: ArsenalProject) => {
     setProjects((prev) => {
       const next = [newProj, ...prev];
@@ -247,10 +232,32 @@ export function useOrbitState() {
     });
   }, [store]);
 
+  const handleUpdateProject = useCallback((updated: ArsenalProject) => {
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : p));
+      store.saveProjects(next);
+      return next;
+    });
+  }, [store]);
+
+  const handleDeleteProject = useCallback((projectId: string) => {
+    setProjects((prev) => {
+      const next = prev.filter((p) => p.id !== projectId);
+      store.saveProjects(next);
+      return next;
+    });
+    updateOpportunities((prev) =>
+      prev.map((o) => o.projectIds.includes(projectId)
+        ? { ...o, projectIds: o.projectIds.filter((id) => id !== projectId) }
+        : o
+      )
+    );
+  }, [store, updateOpportunities]);
+
   return {
     isLoaded: true,
     opportunities,
-    projects,
+    projects: projectsWithCounts,
     projectsMap,
     radarDays,
     activeRadarItems,
@@ -267,6 +274,7 @@ export function useOrbitState() {
     handleLoadSampleData,
     handleRemoveSampleData,
     handleCreateOpportunity,
+    handleUpdateOpportunity,
     handleAdvanceStatus,
     handleArchive,
     handleToggleSubTask,
@@ -275,5 +283,7 @@ export function useOrbitState() {
     handlePromoteRadarItem,
     handleToggleVerifyRadarItem,
     handleAddProject,
+    handleUpdateProject,
+    handleDeleteProject,
   };
 }

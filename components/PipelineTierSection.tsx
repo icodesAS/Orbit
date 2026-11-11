@@ -13,9 +13,11 @@ interface PipelineTierSectionProps {
   focusedId: string | null;
   expandedMap: Record<string, boolean>;
   selectedAiOppId: string | null;
-  viewMode: 'list' | 'board';
+  activeProjectPickerOppId: string | null;
   onFocusOpportunity: (id: string) => void;
   onToggleExpand: (id: string) => void;
+  onOpenEdit: (opp: Opportunity) => void;
+  onToggleProjectPicker: (oppId: string) => void;
   onOpenAskAI: (opp: Opportunity) => void;
   onAdvanceStatus: (id: string) => void;
   onToggleProjectLink: (oppId: string, projectId: string) => void;
@@ -32,9 +34,11 @@ export default function PipelineTierSection({
   focusedId,
   expandedMap,
   selectedAiOppId,
-  viewMode,
+  activeProjectPickerOppId,
   onFocusOpportunity,
   onToggleExpand,
+  onOpenEdit,
+  onToggleProjectPicker,
   onOpenAskAI,
   onAdvanceStatus,
   onToggleProjectLink,
@@ -49,7 +53,7 @@ export default function PipelineTierSection({
       <button
         type="button"
         onClick={() => setIsSectionOpen((prev) => !prev)}
-        className="w-full px-4 py-2 bg-[#F5F5F3] border-b border-[#E5E5E1] flex items-center justify-between hover:bg-[#ECECE8] transition-colors text-left"
+        className="w-full px-4 py-2.5 bg-[#F5F5F3] border-b border-[#E5E5E1] flex items-center justify-between hover:bg-[#ECECE8] transition-colors text-left"
       >
         <div className="flex items-center gap-2">
           {isSectionOpen ? (
@@ -60,7 +64,7 @@ export default function PipelineTierSection({
           <span className="text-xs font-semibold text-[#16181D] tracking-wide">
             {title}
           </span>
-          <span className="font-mono text-[10px] text-[#6B7280] px-1.5 py-0.2 rounded bg-white border border-[#E5E5E1]">
+          <span className="font-mono text-[10px] text-[#6B7280] px-1.5 py-0.5 rounded bg-white border border-[#E5E5E1]">
             {badge}
           </span>
         </div>
@@ -71,14 +75,27 @@ export default function PipelineTierSection({
       </button>
 
       {isSectionOpen && (
-        <div>
+        <div className="overflow-x-auto">
           {opportunities.length === 0 ? (
             <div className="p-6 text-center text-xs text-[#6B7280] font-mono">
               <Layers className="w-4 h-4 mx-auto mb-1.5 text-[#6B7280]" />
               <span>No opportunities in this tier.</span>
             </div>
           ) : (
-            <div className={viewMode === 'board' ? 'p-3' : 'divide-y divide-[#E5E5E1]'}>
+            <div className="min-w-[960px] divide-y divide-[#E5E5E1]">
+              {/* Table Column Headers */}
+              <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-[#FAFAFA] border-b border-[#E5E5E1] text-[11px] font-mono text-[#6B7280] font-medium items-center">
+                <div className="col-span-1">CODE</div>
+                <div className="col-span-3">TITLE & SOURCE</div>
+                <div className="col-span-1">TYPE</div>
+                <div className="col-span-1">DEADLINE</div>
+                <div className="col-span-2">PROGRESS</div>
+                <div className="col-span-2">PROJECTS</div>
+                <div className="col-span-1">STATUS</div>
+                <div className="col-span-1 text-right">ACTIONS</div>
+              </div>
+
+              {/* Table Rows */}
               {opportunities.map((opp) => (
                 <OpportunityCard
                   key={opp.id}
@@ -87,9 +104,11 @@ export default function PipelineTierSection({
                   isFocused={focusedId === opp.id}
                   isExpanded={Boolean(expandedMap[opp.id])}
                   isSelectedForAI={selectedAiOppId === opp.id}
-                  viewMode={viewMode}
+                  isProjectPickerOpen={activeProjectPickerOppId === opp.id}
                   onFocus={() => onFocusOpportunity(opp.id)}
                   onToggleExpand={() => onToggleExpand(opp.id)}
+                  onOpenEdit={() => onOpenEdit(opp)}
+                  onToggleProjectPicker={() => onToggleProjectPicker(opp.id)}
                   onOpenAskAI={() => onOpenAskAI(opp)}
                   onAdvanceStatus={() => onAdvanceStatus(opp.id)}
                   onToggleProjectLink={(projId) => onToggleProjectLink(opp.id, projId)}

@@ -1,18 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Opportunity, ArsenalProject } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
 import OpportunityTasksList from './OpportunityTasksList';
 import OpportunityHeatChip from './OpportunityHeatChip';
-import {
-  Sparkles,
-  Link2,
-  ArrowRight,
-  ChevronDown,
-  ChevronRight,
-  ExternalLink,
-} from 'lucide-react';
+import { Sparkles, ArrowRight, ChevronDown, ChevronRight, ExternalLink, Edit2 } from 'lucide-react';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -20,9 +13,11 @@ interface OpportunityCardProps {
   isFocused: boolean;
   isExpanded: boolean;
   isSelectedForAI: boolean;
-  viewMode: 'list' | 'board';
+  isProjectPickerOpen: boolean;
   onFocus: () => void;
   onToggleExpand: () => void;
+  onOpenEdit: () => void;
+  onToggleProjectPicker: () => void;
   onOpenAskAI: () => void;
   onAdvanceStatus: () => void;
   onToggleProjectLink: (projectId: string) => void;
@@ -31,17 +26,8 @@ interface OpportunityCardProps {
   onArchive: () => void;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Active Build',
-  waitlist: 'Watchlist',
-  submitted: 'Submitted',
-};
-
-const NEXT_STATUS_LABELS: Record<string, string> = {
-  active: 'Mark Submitted',
-  waitlist: 'Promote to Active',
-  submitted: 'Reopen to Active',
-};
+const STATUS_LABELS: Record<string, string> = { active: 'Active Build', waitlist: 'Watchlist', submitted: 'Submitted' };
+const NEXT_STATUS_LABELS: Record<string, string> = { active: 'Mark Submitted', waitlist: 'Promote to Active', submitted: 'Reopen to Active' };
 
 export default function OpportunityCard({
   opportunity,
@@ -49,9 +35,11 @@ export default function OpportunityCard({
   isFocused,
   isExpanded,
   isSelectedForAI,
-  viewMode,
+  isProjectPickerOpen,
   onFocus,
   onToggleExpand,
+  onOpenEdit,
+  onToggleProjectPicker,
   onOpenAskAI,
   onAdvanceStatus,
   onToggleProjectLink,
@@ -59,7 +47,6 @@ export default function OpportunityCard({
   onAddSubTask,
   onArchive,
 }: OpportunityCardProps) {
-  const [showProjectPicker, setShowProjectPicker] = useState(false);
   const deadlineInfo = getDeadlineInfo(opportunity.deadline, opportunity.status);
 
   const linkedProjects = opportunity.projectIds
@@ -69,138 +56,90 @@ export default function OpportunityCard({
   return (
     <div
       onClick={onFocus}
-      className={`group relative transition-colors border-b border-[#E5E5E1] last:border-b-0 ${
-        viewMode === 'board' ? 'rounded-lg border border-[#E5E5E1] mb-2 bg-white' : ''
-      } ${
-        isFocused ? 'bg-[#F5F5F3]' : isSelectedForAI ? 'bg-[#4355B9]/10' : 'bg-white hover:bg-[#FAFAFA]'
+      className={`group transition-colors ${
+        isFocused
+          ? 'bg-[#F5F5F3]'
+          : isSelectedForAI
+          ? 'bg-[#4355B9]/10'
+          : 'bg-white hover:bg-[#FAFAFA]'
       }`}
     >
-      <div
-        className={`px-4 py-2.5 flex ${
-          viewMode === 'board'
-            ? 'flex-col gap-2.5'
-            : 'flex-col xl:flex-row xl:items-center justify-between gap-3'
-        }`}
-      >
-        <div className="flex items-start xl:items-center gap-2.5 min-w-0 flex-1">
+      {/* 12-Column Table Row */}
+      <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-xs">
+        {/* Col 1: Expand Button + Code */}
+        <div className="col-span-1 flex items-center gap-1.5 min-w-0">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand();
+            }}
             aria-label={isExpanded ? 'Collapse tasks' : 'Expand tasks'}
-            className="mt-0.5 xl:mt-0 p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#E5E5E1]/60 transition-colors shrink-0"
+            className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#E5E5E1]/60 transition-colors shrink-0"
           >
-            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            {isExpanded ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
           </button>
+          <span
+            className={`font-mono text-xs tabular-nums truncate ${
+              isFocused ? 'text-[#4355B9] font-semibold' : 'text-[#6B7280]'
+            }`}
+          >
+            {opportunity.code}
+          </span>
+        </div>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`font-mono text-xs tabular-nums whitespace-nowrap shrink-0 ${isFocused ? 'text-[#4355B9] font-semibold' : 'text-[#6B7280]'}`}>
-                {opportunity.code}
-              </span>
-              <h3 className="text-sm font-medium text-[#16181D] truncate">
-                {opportunity.title}
-              </h3>
-              {opportunity.url && (
-                <a
-                  href={opportunity.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  title="Open source portal"
-                  className="text-[#6B7280] hover:text-[#16181D] transition-colors shrink-0"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-[#6B7280] mt-0.5 flex-wrap">
-              <span className="text-[#16181D] font-medium">{opportunity.organization}</span>
-              <span className="text-[#E5E5E1]">·</span>
-              <span className="font-mono text-[11px] text-[#6B7280]">{opportunity.type}</span>
-              <span className="text-[#E5E5E1]">·</span>
-              <span className="font-mono text-[11px] text-[#6B7280]">{STATUS_LABELS[opportunity.status]}</span>
-              <span className="text-[#E5E5E1]">·</span>
-              <span className="font-mono text-[11px] text-[#6B7280] tabular-nums">
-                updated {opportunity.lastActivityAt}
-              </span>
-            </div>
+        {/* Col 2: Title, Org, URL & Activity */}
+        <div className="col-span-3 min-w-0 pr-2">
+          <div className="flex items-center gap-1.5">
+            <h3 className="font-medium text-[#16181D] truncate" title={opportunity.title}>
+              {opportunity.title}
+            </h3>
+            {opportunity.url && (
+              <a
+                href={opportunity.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                title="Open source portal"
+                className="text-[#6B7280] hover:text-[#16181D] transition-colors shrink-0"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-[#6B7280] mt-0.5 truncate">
+            <span className="font-medium text-[#16181D] truncate">{opportunity.organization}</span>
+            <span className="text-[#E5E5E1]">·</span>
+            <span className="font-mono text-[10px] shrink-0">{opportunity.lastActivityAt}</span>
           </div>
         </div>
 
-        <div
-          className={`flex items-center ${
-            viewMode === 'board'
-              ? 'justify-between flex-wrap gap-2 pt-2 border-t border-[#E5E5E1]'
-              : 'justify-between xl:justify-end gap-4 pl-6 xl:pl-0'
-          }`}
-        >
-          <div className="relative flex items-center gap-1.5 font-mono text-xs">
-            {linkedProjects.length > 0 ? (
-              <div className="flex items-center gap-1.5 text-[#4355B9]">
-                {linkedProjects.map((proj, idx) => (
-                  <React.Fragment key={proj.id}>
-                    {idx > 0 && <span className="text-[#6B7280]">+</span>}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setShowProjectPicker((prev) => !prev); }}
-                      className="hover:underline transition-colors whitespace-nowrap shrink-0 font-medium"
-                    >
-                      {proj.title}
-                    </button>
-                  </React.Fragment>
-                ))}
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setShowProjectPicker((prev) => !prev); }}
-                className="text-[#6B7280] hover:text-[#16181D] text-[11px] transition-colors whitespace-nowrap shrink-0"
-              >
-                + link project
-              </button>
-            )}
+        {/* Col 3: Type */}
+        <div className="col-span-1 font-mono text-[11px] text-[#6B7280] capitalize truncate">
+          {opportunity.type}
+        </div>
 
-            {showProjectPicker && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-7 w-60 rounded-lg bg-white border border-[#E5E5E1] shadow-lg p-2 z-40"
-              >
-                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#E5E5E1] text-[11px] text-[#6B7280]">
-                  <span>Link Arsenal Project</span>
-                  <button type="button" onClick={() => setShowProjectPicker(false)} className="text-[#6B7280] hover:text-[#16181D] font-mono">
-                    Esc
-                  </button>
-                </div>
-                <div className="space-y-1">
-                  {allProjects.map((proj) => {
-                    const isLinked = opportunity.projectIds.includes(proj.id);
-                    return (
-                      <button
-                        key={proj.id}
-                        type="button"
-                        onClick={() => onToggleProjectLink(proj.id)}
-                        className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-xs font-mono transition-colors ${
-                          isLinked ? 'bg-[#4355B9]/10 text-[#4355B9] font-medium' : 'text-[#16181D] hover:bg-[#F5F5F3]'
-                        }`}
-                      >
-                        <span className="truncate">{proj.title}</span>
-                        <span className="text-[10px] text-[#6B7280]">{isLinked ? 'LINKED' : 'LINK'}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Col 4: Deadline Chip */}
+        <div className="col-span-1">
+          <OpportunityHeatChip deadlineInfo={deadlineInfo} />
+        </div>
 
+        {/* Col 5: Progress Bar */}
+        <div className="col-span-2 flex items-center gap-2">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-            title="Click to inspect & toggle sub-tasks"
-            className="flex items-center gap-2 shrink-0 group/prog"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand();
+            }}
+            title="Click or press Enter to inspect tasks"
+            className="flex items-center gap-2 w-full group/prog text-left"
           >
-            <div className="w-16 h-1.5 bg-[#E5E5E1] rounded-full overflow-hidden">
+            <div className="flex-1 h-1.5 bg-[#E5E5E1] rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-200 ${
                   opportunity.progress === 100 ? 'bg-[#067647]' : 'bg-[#4355B9]'
@@ -208,61 +147,134 @@ export default function OpportunityCard({
                 style={{ width: `${opportunity.progress}%` }}
               />
             </div>
-            <span className="font-mono text-xs tabular-nums text-[#6B7280] group-hover/prog:text-[#16181D]">
+            <span className="font-mono text-[11px] tabular-nums text-[#6B7280] group-hover/prog:text-[#16181D] shrink-0">
               {opportunity.tasksDone}/{opportunity.tasksTotal}
             </span>
           </button>
+        </div>
 
-          <OpportunityHeatChip deadlineInfo={deadlineInfo} />
+        {/* Col 6: Projects & Picker */}
+        <div className="col-span-2 relative font-mono text-xs">
+          {linkedProjects.length > 0 ? (
+            <div className="flex items-center gap-1 flex-wrap">
+              {linkedProjects.map((proj, idx) => (
+                <React.Fragment key={proj.id}>
+                  {idx > 0 && <span className="text-[#6B7280]">+</span>}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleProjectPicker();
+                    }}
+                    className="text-[#4355B9] hover:underline transition-colors truncate max-w-[110px] font-medium"
+                  >
+                    {proj.title}
+                  </button>
+                </React.Fragment>
+              ))}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleProjectPicker();
+              }}
+              className="text-[#6B7280] hover:text-[#16181D] text-[11px] transition-colors"
+            >
+              + link project
+            </button>
+          )}
 
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`flex items-center gap-1 transition-opacity shrink-0 ${
-              isFocused || isSelectedForAI || showProjectPicker
-                ? 'opacity-100'
-                : 'opacity-85 xl:opacity-0 xl:group-hover:opacity-100 xl:focus-within:opacity-100'
+          {isProjectPickerOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute left-0 top-7 w-60 rounded-lg bg-white border border-[#E5E5E1] shadow-lg p-2 z-40 text-left"
+            >
+              <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#E5E5E1] text-[11px] text-[#6B7280]">
+                <span>Link Arsenal Project</span>
+                <button
+                  type="button"
+                  onClick={onToggleProjectPicker}
+                  className="text-[#6B7280] hover:text-[#16181D] font-mono"
+                >
+                  Esc
+                </button>
+              </div>
+              <div className="space-y-1">
+                {allProjects.length === 0 ? (
+                  <p className="text-[11px] text-[#6B7280] p-1">No projects in Arsenal.</p>
+                ) : (
+                  allProjects.map((proj) => {
+                    const isLinked = opportunity.projectIds.includes(proj.id);
+                    return (
+                      <button
+                        key={proj.id}
+                        type="button"
+                        onClick={() => onToggleProjectLink(proj.id)}
+                        className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-xs font-mono transition-colors ${
+                          isLinked
+                            ? 'bg-[#4355B9]/10 text-[#4355B9] font-medium'
+                            : 'text-[#16181D] hover:bg-[#F5F5F3]'
+                        }`}
+                      >
+                        <span className="truncate">{proj.title}</span>
+                        <span className="text-[10px] text-[#6B7280]">
+                          {isLinked ? 'LINKED' : 'LINK'}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Col 7: Status */}
+        <div className="col-span-1 font-mono text-[11px] text-[#6B7280] truncate">
+          {STATUS_LABELS[opportunity.status]}
+        </div>
+
+        {/* Col 8: Action Buttons (Edit, Link, Ask AI, Advance) */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="col-span-1 flex items-center justify-end gap-1 shrink-0"
+        >
+          <button
+            type="button"
+            onClick={onOpenEdit}
+            title="Edit Opportunity (E)"
+            className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#E5E5E1]/60 transition-colors"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenAskAI}
+            title="Scoped Ask AI (A)"
+            className={`p-1 rounded transition-colors ${
+              isSelectedForAI
+                ? 'bg-[#4355B9] text-white'
+                : 'text-[#4355B9] hover:bg-[#4355B9]/10'
             }`}
           >
-            <button
-              type="button"
-              onClick={onOpenAskAI}
-              title="Scoped Ask AI (A)"
-              className={`px-2 py-1 rounded text-xs font-mono flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 shadow-2xs ${
-                isSelectedForAI
-                  ? 'bg-[#4355B9] text-white'
-                  : 'bg-white hover:bg-[#F5F5F3] text-[#4355B9] border border-[#E5E5E1]'
-              }`}
-            >
-              <Sparkles className="w-3 h-3 text-[#4355B9] shrink-0" />
-              <span>Ask AI</span>
-              <kbd className="text-[10px] text-[#6B7280] ml-0.5">A</kbd>
-            </button>
+            <Sparkles className="w-3.5 h-3.5" />
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setShowProjectPicker((prev) => !prev)}
-              title="Link Arsenal Project (P)"
-              className="px-2 py-1 rounded text-xs font-mono bg-white hover:bg-[#F5F5F3] text-[#16181D] border border-[#E5E5E1] flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 shadow-2xs"
-            >
-              <Link2 className="w-3 h-3 text-[#6B7280] shrink-0" />
-              <span className="hidden sm:inline">Link</span>
-              <kbd className="text-[10px] text-[#6B7280]">P</kbd>
-            </button>
-
-            <button
-              type="button"
-              onClick={onAdvanceStatus}
-              title={`${NEXT_STATUS_LABELS[opportunity.status]} (S)`}
-              className="px-2 py-1 rounded text-xs font-mono bg-white hover:bg-[#F5F5F3] text-[#067647] border border-[#E5E5E1] flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 shadow-2xs"
-            >
-              <span>Advance</span>
-              <ArrowRight className="w-3 h-3 shrink-0" />
-              <kbd className="text-[10px] text-[#6B7280]">S</kbd>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onAdvanceStatus}
+            title={`${NEXT_STATUS_LABELS[opportunity.status]} (S)`}
+            className="p-1 rounded text-[#067647] hover:bg-[#067647]/10 transition-colors"
+          >
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
+      {/* Subtasks Accordion */}
       {isExpanded && (
         <OpportunityTasksList
           opportunity={opportunity}
