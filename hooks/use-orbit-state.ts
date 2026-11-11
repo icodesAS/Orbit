@@ -1,20 +1,60 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Opportunity, ArsenalProject, RadarItem, UndoAction, OpportunityStatus } from '@/lib/types';
+'use client';
+
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Opportunity, ArsenalProject, RadarItem, UndoAction } from '@/lib/types';
 import { getOrbitStore } from '@/lib/store';
 import { getDeadlineInfo } from '@/lib/deadline';
+import { useOrbitAuth } from './use-orbit-auth';
+import { useOpportunityActions } from './use-opportunity-actions';
+import {
+  subscribeOpportunities,
+  subscribeProjects,
+  subscribeRadarDays,
+  saveOpportunityToFirestore,
+  saveProjectToFirestore,
+  deleteProjectFromFirestore,
+  updateRadarItemFlagsInFirestore,
+  migrateLocalDataToFirestore,
+} from '@/lib/liveStore';
 
 export function useOrbitState() {
   const store = useMemo(() => getOrbitStore(), []);
-  const initialState = useMemo(() => store.loadState(), [store]);
+  const initialLocal = useMemo(() => store.loadState(), [store]);
+  const auth = useOrbitAuth();
 
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(() => initialState.opportunities);
-  const [projects, setProjects] = useState<ArsenalProject[]>(() => initialState.projects);
-  const [radarDays, setRadarDays] = useState<any[]>(() => initialState.radarDays);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(() => initialLocal.opportunities);
+  const [projects, setProjects] = useState<ArsenalProject[]>(() => initialLocal.projects);
+  const [radarDays, setRadarDays] = useState<any[]>(() => initialLocal.radarDays);
   const [userApiKey, setUserApiKey] = useState('');
-  const [isLive, setIsLive] = useState(() => initialState.isLive);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+  const [selectedRadarDate, setSelectedRadarDate] = useState<string>('');
 
-  const projectsWithCounts: ArsenalProject[] = useMemo(() => {
+  // Real-time Firestore subscriptions when signed in
+  useEffect(() => {
+    if (!auth.user) return;
+    const uid = auth.user.uid;
+
+    const unsubOpps = subscribeOpportunities(uid, (remoteOpps) => {
+      setOpportunities(remoteOpps);
+    }, (err) => setErrorToast(`Cloud sync error: ${err.message}`));
+
+    const unsubProjs = subscribeProjects(uid, (remoteProjs) => {
+      setProjects(remoteProjs);
+    }, (err) => setErrorToast(`Cloud projects error: ${err.message}`));
+
+    const unsubRadar = subscribeRadarDays(uid, (remoteDays) => {
+      if (remoteDays.length > 0) setRadarDays(remoteDays);
+    }, (err) => setErrorToast(`Cloud radar error: ${err.message}`));
+
+    return () => {
+      unsubOpps();
+      unsubProjs();
+      unsubRadar();
+    };
+  }, [auth.user]);
+
+  const projectsWithCounts = useMemo(() => {
     return projects.map((p) => ({
       ...p,
       usedInCount: opportunities.filter((o) => o.projectIds.includes(p.id)).length,
@@ -27,9 +67,7 @@ export function useOrbitState() {
     return map;
   }, [projectsWithCounts]);
 
-  const [selectedRadarDate, setSelectedRadarDate] = useState<string>('');
-
-  const availableRadarDates: string[] = useMemo(() => radarDays.map((d: any) => d.date), [radarDays]);
+  const availableRadarDates = useMemo(() => radarDays.map((d: any) => d.date), [radarDays]);
   const activeDay = useMemo(() => {
     if (!radarDays || radarDays.length === 0) return null;
     return (selectedRadarDate && radarDays.find((d: any) => d.date === selectedRadarDate)) || radarDays[0];
@@ -69,111 +107,51 @@ export function useOrbitState() {
     return max + 1;
   }, [opportunities]);
 
+  // Optimistic updater with silent rollback on Firestore failure
   const updateOpportunities = useCallback((updater: (prev: Opportunity[]) => Opportunity[]) => {
-    setOpportunities((prev) => {
-      const next = updater(prev);
+    setOpportunities((prevSnapshot) => {
+      const next = updater(prevSnapshot);
       store.saveOpportunities(next);
+
+      if (auth.user) {
+        const uid = auth.user.uid;
+        Promise.all(next.map((opp) => saveOpportunityToFirestore(uid, opp))).catch((err) => {
+          setOpportunities(prevSnapshot);
+          store.saveOpportunities(prevSnapshot);
+          setErrorToast(`Sync error. Changes reverted: ${err.message}`);
+        });
+      }
       return next;
     });
-  }, [store]);
+  }, [auth.user, store]);
 
-  const handleLoadSampleData = useCallback(async () => {
-    const nextState = await store.loadSampleData();
-    setOpportunities(nextState.opportunities);
-    setProjects(nextState.projects);
-    setRadarDays(nextState.radarDays);
-  }, [store]);
-
-  const handleRemoveSampleData = useCallback(() => {
-    const nextState = store.removeSampleData();
-    setOpportunities(nextState.opportunities);
-    setProjects(nextState.projects);
-    setRadarDays(nextState.radarDays);
-  }, [store]);
-
-  const handleResetDemo = useCallback(() => {
-    store.saveOpportunities([]);
-    store.saveProjects([]);
-    store.saveRadarDays([]);
-    setOpportunities([]);
-    setProjects([]);
-    setRadarDays([]);
-  }, [store]);
+  const {
+    handleAdvanceStatus,
+    handleArchive,
+    handleToggleSubTask,
+    handleAddSubTask,
+    handleToggleProjectLink,
+  } = useOpportunityActions({ opportunities, updateOpportunities, setUndoAction });
 
   const handleCreateOpportunity = useCallback((newOpp: Opportunity) => {
-    updateOpportunities((prev) => [newOpp, ...prev]);
-  }, [updateOpportunities]);
+    setOpportunities((prevSnapshot) => {
+      const next = [newOpp, ...prevSnapshot];
+      store.saveOpportunities(next);
 
-  const handleAdvanceStatus = useCallback((id: string) => {
-    const opp = opportunities.find((o) => o.id === id);
-    if (!opp) return;
-    const previousStatus = opp.status;
-    let nextStatus: OpportunityStatus = 'active';
-    if (previousStatus === 'active') nextStatus = 'submitted';
-    else if (previousStatus === 'waitlist' || previousStatus === 'submitted') nextStatus = 'active';
-
-    updateOpportunities((prev) =>
-      prev.map((o) => o.id === id ? { ...o, status: nextStatus, updatedAt: new Date().toISOString() } : o)
-    );
-    setUndoAction({
-      id: `undo-${Date.now()}`,
-      message: `Updated ${opp.code} status to ${nextStatus}`,
-      timestamp: Date.now(),
-      restore: () => {
-        updateOpportunities((prev) =>
-          prev.map((o) => o.id === id ? { ...o, status: previousStatus } : o)
-        );
-      },
+      if (auth.user) {
+        saveOpportunityToFirestore(auth.user.uid, newOpp).catch((err) => {
+          setOpportunities(prevSnapshot);
+          store.saveOpportunities(prevSnapshot);
+          setErrorToast(`Failed to save opportunity: ${err.message}`);
+        });
+      }
+      return next;
     });
-  }, [opportunities, updateOpportunities]);
+  }, [auth.user, store]);
 
-  const handleArchive = useCallback((id: string) => {
-    const opp = opportunities.find((o) => o.id === id);
-    if (!opp) return;
-    updateOpportunities((prev) => prev.map((o) => o.id === id ? { ...o, status: 'archived' } : o));
-    setUndoAction({
-      id: `undo-${Date.now()}`,
-      message: `Archived ${opp.code}`,
-      timestamp: Date.now(),
-      restore: () => {
-        updateOpportunities((prev) => prev.map((o) => o.id === id ? { ...o, status: opp.status } : o));
-      },
-    });
-  }, [opportunities, updateOpportunities]);
-
-  const handleToggleSubTask = useCallback((oppId: string, taskId: string) => {
+  const handleUpdateOpportunity = useCallback((updated: Opportunity) => {
     updateOpportunities((prev) =>
-      prev.map((o) => {
-        if (o.id !== oppId) return o;
-        const tasks = o.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t));
-        const done = tasks.filter((t) => t.done).length;
-        const total = tasks.length;
-        return { ...o, tasks, tasksDone: done, tasksTotal: total, progress: total > 0 ? Math.round((done / total) * 100) : 0, updatedAt: new Date().toISOString() };
-      })
-    );
-  }, [updateOpportunities]);
-
-  const handleAddSubTask = useCallback((oppId: string, title: string) => {
-    updateOpportunities((prev) =>
-      prev.map((o) => {
-        if (o.id !== oppId) return o;
-        const newTask = { id: `t-${Date.now()}`, title, done: false, sortOrder: o.tasks.length + 1, createdAt: new Date().toISOString() };
-        const tasks = [...o.tasks, newTask];
-        const done = tasks.filter((t) => t.done).length;
-        const total = tasks.length;
-        return { ...o, tasks, tasksDone: done, tasksTotal: total, progress: total > 0 ? Math.round((done / total) * 100) : 0, updatedAt: new Date().toISOString() };
-      })
-    );
-  }, [updateOpportunities]);
-
-  const handleToggleProjectLink = useCallback((oppId: string, projectId: string) => {
-    updateOpportunities((prev) =>
-      prev.map((o) => {
-        if (o.id !== oppId) return o;
-        const exists = o.projectIds.includes(projectId);
-        const projectIds = exists ? o.projectIds.filter((id) => id !== projectId) : [...o.projectIds, projectId];
-        return { ...o, projectIds, updatedAt: new Date().toISOString() };
-      })
+      prev.map((o) => (o.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : o))
     );
   }, [updateOpportunities]);
 
@@ -207,70 +185,141 @@ export function useOrbitState() {
       tasks: [{ id: `t-${Date.now()}`, title: 'Confirm program deadline and review deliverables', done: false, sortOrder: 1, createdAt: new Date().toISOString() }],
       aiChat: [],
     };
-    updateOpportunities((prev) => [newOpp, ...prev]);
-    setRadarDays((prev) => {
-      const next = prev.map((day) => ({
+    handleCreateOpportunity(newOpp);
+    setRadarDays((prevDays) => {
+      const nextDays = prevDays.map((day) => ({
         ...day,
         items: day.items.map((i: RadarItem) => i.id === item.id ? { ...i, promoted: true } : i),
       }));
-      store.saveRadarDays(next);
-      return next;
+      store.saveRadarDays(nextDays);
+
+      if (auth.user) {
+        updateRadarItemFlagsInFirestore(auth.user.uid, activeDate, item.id, { promoted: true }).catch((err) => {
+          setRadarDays(prevDays);
+          store.saveRadarDays(prevDays);
+          setErrorToast(`Failed to update radar item flag: ${err.message}`);
+        });
+      }
+      return nextDays;
     });
     return newOpp.id;
-  }, [activeDay, nextCodeNumber, store, updateOpportunities]);
+  }, [activeDay, auth.user, handleCreateOpportunity, nextCodeNumber, store]);
 
   const handleToggleVerifyRadarItem = useCallback((itemId: string) => {
-    setRadarDays((prev) => {
-      const next = prev.map((day) => ({
+    const activeDate = activeDay?.date || new Date().toISOString().split('T')[0];
+    setRadarDays((prevDays) => {
+      let newVerifiedVal = true;
+      const nextDays = prevDays.map((day) => ({
         ...day,
-        items: day.items.map((i: RadarItem) => i.id === itemId ? { ...i, verified: !i.verified } : i),
+        items: day.items.map((i: RadarItem) => {
+          if (i.id === itemId) {
+            newVerifiedVal = !i.verified;
+            return { ...i, verified: newVerifiedVal };
+          }
+          return i;
+        }),
       }));
-      store.saveRadarDays(next);
-      return next;
-    });
-  }, [store]);
+      store.saveRadarDays(nextDays);
 
-  const handleUpdateOpportunity = useCallback((updated: Opportunity) => {
-    updateOpportunities((prev) =>
-      prev.map((o) => (o.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : o))
-    );
-  }, [updateOpportunities]);
+      if (auth.user) {
+        updateRadarItemFlagsInFirestore(auth.user.uid, activeDate, itemId, { verified: newVerifiedVal }).catch((err) => {
+          setRadarDays(prevDays);
+          store.saveRadarDays(prevDays);
+          setErrorToast(`Failed to update verification: ${err.message}`);
+        });
+      }
+      return nextDays;
+    });
+  }, [activeDay, auth.user, store]);
 
   const handleAddProject = useCallback((newProj: ArsenalProject) => {
     setProjects((prev) => {
       const next = [newProj, ...prev];
       store.saveProjects(next);
+      if (auth.user) {
+        saveProjectToFirestore(auth.user.uid, newProj).catch((err) => {
+          setProjects(prev);
+          store.saveProjects(prev);
+          setErrorToast(`Failed to save project to cloud: ${err.message}`);
+        });
+      }
       return next;
     });
-  }, [store]);
+  }, [auth.user, store]);
 
   const handleUpdateProject = useCallback((updated: ArsenalProject) => {
     setProjects((prev) => {
       const next = prev.map((p) => (p.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : p));
       store.saveProjects(next);
+      if (auth.user) {
+        saveProjectToFirestore(auth.user.uid, updated).catch((err) => {
+          setProjects(prev);
+          store.saveProjects(prev);
+          setErrorToast(`Failed to update project: ${err.message}`);
+        });
+      }
       return next;
     });
-  }, [store]);
+  }, [auth.user, store]);
 
   const handleDeleteProject = useCallback((projectId: string) => {
     setProjects((prev) => {
       const next = prev.filter((p) => p.id !== projectId);
       store.saveProjects(next);
+      updateOpportunities((oPrev) =>
+        oPrev.map((o) => o.projectIds.includes(projectId) ? { ...o, projectIds: o.projectIds.filter((id) => id !== projectId) } : o)
+      );
+      if (auth.user) {
+        deleteProjectFromFirestore(auth.user.uid, projectId).catch((err) => {
+          setProjects(prev);
+          store.saveProjects(prev);
+          setErrorToast(`Failed to delete project: ${err.message}`);
+        });
+      }
       return next;
     });
-    updateOpportunities((prev) =>
-      prev.map((o) => o.projectIds.includes(projectId) ? { ...o, projectIds: o.projectIds.filter((id) => id !== projectId) } : o)
-    );
-  }, [store, updateOpportunities]);
+  }, [auth.user, store, updateOpportunities]);
+
+  const handleMigrateDemoToCloud = useCallback(async () => {
+    if (!auth.user) throw new Error('Must be signed in to migrate data');
+    return migrateLocalDataToFirestore(auth.user.uid, {
+      opportunities,
+      projects,
+    });
+  }, [auth.user, opportunities, projects]);
+
+  const handleLoadSampleData = useCallback(async () => {
+    const nextState = await store.loadSampleData();
+    setOpportunities(nextState.opportunities);
+    setProjects(nextState.projects);
+    setRadarDays(nextState.radarDays);
+  }, [store]);
+
+  const handleRemoveSampleData = useCallback(() => {
+    const nextState = store.removeSampleData();
+    setOpportunities(nextState.opportunities);
+    setProjects(nextState.projects);
+    setRadarDays(nextState.radarDays);
+  }, [store]);
+
+  const handleResetDemo = useCallback(() => {
+    store.saveOpportunities([]);
+    store.saveProjects([]);
+    store.saveRadarDays([]);
+    setOpportunities([]);
+    setProjects([]);
+    setRadarDays([]);
+  }, [store]);
 
   return {
     isLoaded: true, opportunities, projects: projectsWithCounts, projectsMap, radarDays,
     activeRadarItems, selectedRadarDate, setSelectedRadarDate, availableRadarDates,
-    counts, nextCodeNumber, userApiKey, setUserApiKey, isLive, hasSampleData,
-    undoAction, setUndoAction, updateOpportunities, handleResetDemo, handleLoadSampleData,
-    handleRemoveSampleData, handleCreateOpportunity, handleUpdateOpportunity,
-    handleAdvanceStatus, handleArchive, handleToggleSubTask, handleAddSubTask,
-    handleToggleProjectLink, handlePromoteRadarItem, handleToggleVerifyRadarItem,
-    handleAddProject, handleUpdateProject, handleDeleteProject,
+    counts, nextCodeNumber, userApiKey, setUserApiKey, isLive: auth.isFirebaseReady,
+    user: auth.user, authLoading: auth.authLoading, signIn: auth.signIn, signOut: auth.signOut,
+    errorToast, setErrorToast, hasSampleData, undoAction, setUndoAction, updateOpportunities,
+    handleResetDemo, handleLoadSampleData, handleRemoveSampleData, handleCreateOpportunity,
+    handleUpdateOpportunity, handleAdvanceStatus, handleArchive, handleToggleSubTask,
+    handleAddSubTask, handleToggleProjectLink, handlePromoteRadarItem, handleToggleVerifyRadarItem,
+    handleAddProject, handleUpdateProject, handleDeleteProject, handleMigrateDemoToCloud,
   };
 }

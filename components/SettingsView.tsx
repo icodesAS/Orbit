@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { DEFAULT_GEMINI_MODEL } from '@/lib/config';
 import { Key, RotateCcw, ShieldCheck, Database, Cpu, Trash2 } from 'lucide-react';
+import CloudSyncSection from './CloudSyncSection';
 
 interface SettingsViewProps {
   userApiKey: string;
@@ -12,6 +13,11 @@ interface SettingsViewProps {
   onLoadSampleData: () => void;
   onRemoveSampleData: () => void;
   onResetDemo?: () => void;
+  user?: any;
+  authLoading?: boolean;
+  onSignIn?: () => Promise<any>;
+  onSignOut?: () => Promise<void>;
+  onMigrateToCloud?: () => Promise<{ oppsCount: number; projsCount: number }>;
 }
 
 export default function SettingsView({
@@ -22,6 +28,11 @@ export default function SettingsView({
   onLoadSampleData,
   onRemoveSampleData,
   onResetDemo,
+  user,
+  authLoading,
+  onSignIn,
+  onSignOut,
+  onMigrateToCloud,
 }: SettingsViewProps) {
   const [tempKey, setTempKey] = useState(userApiKey);
   const [savedNotice, setSavedNotice] = useState(false);
@@ -90,6 +101,17 @@ export default function SettingsView({
         )}
       </div>
 
+      {/* Cloud Account & Auth Section (Phase G) */}
+      {isLive && (
+        <CloudSyncSection
+          user={user}
+          authLoading={authLoading}
+          onSignIn={onSignIn}
+          onSignOut={onSignOut}
+          onMigrateToCloud={onMigrateToCloud}
+        />
+      )}
+
       {/* Mode Badge & Storage Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="p-4 rounded-lg bg-white border border-[#E5E5E1] space-y-2 shadow-2xs">
@@ -110,7 +132,7 @@ export default function SettingsView({
           </div>
           <p className="text-[#6B7280] text-[11px] leading-relaxed">
             {isLive
-              ? 'Connected to Firebase. Data is synced to Firestore under your user identity.'
+              ? 'Configured for Firebase. Data syncs to Firestore subcollections with optimistic updates.'
               : hasSampleData
               ? 'Using fictional SAMPLE dataset stored in your browser localStorage.'
               : 'Workspace data is saved to your browser localStorage.'}

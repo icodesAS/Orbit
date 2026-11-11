@@ -18,18 +18,20 @@ import EditOpportunityModal from './EditOpportunityModal';
 import AskAIDrawer from './AskAIDrawer';
 import ShortcutsModal from './ShortcutsModal';
 import UndoToast from './UndoToast';
+import ErrorToast from './ErrorToast';
 
 export default function OrbitWorkspace() {
   const {
     opportunities, projects, projectsMap, activeRadarItems,
     selectedRadarDate, setSelectedRadarDate, availableRadarDates, counts,
     nextCodeNumber, userApiKey, setUserApiKey, isLive, hasSampleData,
+    user, authLoading, signIn, signOut, errorToast, setErrorToast,
     undoAction, setUndoAction, updateOpportunities, handleResetDemo,
     handleLoadSampleData, handleRemoveSampleData, handleCreateOpportunity,
     handleUpdateOpportunity, handleAdvanceStatus, handleArchive,
     handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
     handlePromoteRadarItem, handleToggleVerifyRadarItem, handleAddProject,
-    handleUpdateProject, handleDeleteProject,
+    handleUpdateProject, handleDeleteProject, handleMigrateDemoToCloud,
   } = useOrbitState();
 
   const [activeSection, setActiveSection] = useState<NavSection>('today');
@@ -158,21 +160,18 @@ export default function OrbitWorkspace() {
             {opportunities.length === 0 ? (
               <div className="p-8 text-center rounded-lg border border-[#E5E5E1] bg-white space-y-3 max-w-xl mx-auto my-12 shadow-2xs">
                 <p className="text-xs text-[#6B7280]">Your pipeline is empty.</p>
-                <div className="flex items-center justify-center gap-2">
-                  <button type="button" onClick={() => setIsNewModalOpen(true)} className="px-3 py-1.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-white font-mono text-xs transition-colors shadow-2xs">
-                    Add your first opportunity
-                  </button>
-                  {!isLive && !hasSampleData && (
-                    <button type="button" onClick={handleLoadSampleData} className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#F5F5F3] border border-[#E5E5E1] text-[#16181D] font-mono text-xs transition-colors shadow-2xs">
-                      Load sample data
-                    </button>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsNewModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#4355B9] text-white text-xs font-medium hover:bg-[#3848A3] transition-colors"
+                >
+                  Create Opportunity
+                </button>
               </div>
             ) : (
               [
-                { title: 'Active Builds & Hard Submissions', badge: 'TIER 1', items: activeOpps },
-                { title: 'Waitlists & Registration Watch', badge: 'TIER 2', items: waitlistOpps },
+                { title: 'Active Pursuits', badge: 'TIER 1', items: activeOpps },
+                { title: 'Solid Bets & Waitlists', badge: 'TIER 2', items: waitlistOpps },
                 { title: 'Submitted / Pending Verdict', badge: 'TIER 3', items: submittedOpps },
               ].map((tier) => (
                 <PipelineTierSection
@@ -208,7 +207,7 @@ export default function OrbitWorkspace() {
               projectsMap={projectsMap}
               allProjects={projects}
               availableDates={availableRadarDates}
-              selectedDate={selectedRadarDate}
+              selectedDate={selectedRadarDate || availableRadarDates[0] || ''}
               onSelectDate={setSelectedRadarDate}
               isLive={isLive}
               hasSampleData={hasSampleData}
@@ -222,13 +221,9 @@ export default function OrbitWorkspace() {
         {activeSection === 'arsenal' && (
           <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
             <ArsenalView
-              projects={projects}
-              isLive={isLive}
-              hasSampleData={hasSampleData}
-              onAddProject={handleAddProject}
-              onUpdateProject={handleUpdateProject}
-              onDeleteProject={handleDeleteProject}
-              onLoadSampleData={handleLoadSampleData}
+              projects={projects} isLive={isLive} hasSampleData={hasSampleData}
+              onAddProject={handleAddProject} onUpdateProject={handleUpdateProject}
+              onDeleteProject={handleDeleteProject} onLoadSampleData={handleLoadSampleData}
             />
           </div>
         )}
@@ -236,12 +231,10 @@ export default function OrbitWorkspace() {
         {activeSection === 'settings' && (
           <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
             <SettingsView
-              userApiKey={userApiKey}
-              onUpdateApiKey={setUserApiKey}
-              isLive={isLive}
-              hasSampleData={hasSampleData}
-              onLoadSampleData={handleLoadSampleData}
-              onRemoveSampleData={handleRemoveSampleData}
+              userApiKey={userApiKey} onUpdateApiKey={setUserApiKey} isLive={isLive}
+              hasSampleData={hasSampleData} user={user} authLoading={authLoading}
+              onSignIn={signIn} onSignOut={signOut} onMigrateToCloud={handleMigrateDemoToCloud}
+              onLoadSampleData={handleLoadSampleData} onRemoveSampleData={handleRemoveSampleData}
               onResetDemo={handleResetDemo}
             />
           </div>
@@ -251,46 +244,34 @@ export default function OrbitWorkspace() {
       <MobileNavBar activeSection={activeSection} onSelectSection={setActiveSection} counts={counts} />
 
       <AskAIDrawer
-        opportunity={selectedAiOpp}
-        allProjects={projects}
-        userApiKey={userApiKey}
-        onClose={() => setSelectedAiOppId(null)}
-        onSendMessage={handleAddAiMessage}
+        opportunity={selectedAiOpp} allProjects={projects} userApiKey={userApiKey}
+        onClose={() => setSelectedAiOppId(null)} onSendMessage={handleAddAiMessage}
         onClearHistory={handleClearAiHistory}
       />
 
       <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        opportunities={opportunities}
-        projects={projects}
-        focusedOpportunity={focusedOpp}
+        isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)}
+        opportunities={opportunities} projects={projects} focusedOpportunity={focusedOpp}
         onSelectOpportunity={(opp) => { setSelectedFocusedId(opp.id); setActiveSection('pipeline'); }}
-        onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
-        onOpenEdit={(opp) => setEditingOppId(opp.id)}
-        onAdvanceStatus={handleAdvanceStatus}
-        onToggleProjectLink={handleToggleProjectLink}
-        onOpenNewModal={() => setIsNewModalOpen(true)}
-        onSelectSection={setActiveSection}
+        onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)} onOpenEdit={(opp) => setEditingOppId(opp.id)}
+        onAdvanceStatus={handleAdvanceStatus} onToggleProjectLink={handleToggleProjectLink}
+        onOpenNewModal={() => setIsNewModalOpen(true)} onSelectSection={setActiveSection}
       />
 
       <NewOpportunityModal
-        isOpen={isNewModalOpen}
-        onClose={() => setIsNewModalOpen(false)}
-        projects={projects}
-        nextCodeNumber={nextCodeNumber}
+        isOpen={isNewModalOpen} onClose={() => setIsNewModalOpen(false)}
+        projects={projects} nextCodeNumber={nextCodeNumber}
         onCreate={(opp) => { handleCreateOpportunity(opp); setSelectedFocusedId(opp.id); }}
       />
 
       <EditOpportunityModal
-        isOpen={Boolean(editingOpp)}
-        opportunity={editingOpp}
-        onClose={() => setEditingOppId(null)}
-        onSave={handleUpdateOpportunity}
+        isOpen={Boolean(editingOpp)} opportunity={editingOpp}
+        onClose={() => setEditingOppId(null)} onSave={handleUpdateOpportunity}
       />
 
       <ShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <UndoToast undoAction={undoAction} onUndo={() => { undoAction?.restore(); setUndoAction(null); }} />
+      <ErrorToast message={errorToast} onDismiss={() => setErrorToast(null)} />
     </div>
   );
 }
