@@ -39,6 +39,15 @@ export declare function buildRadarPrompt(params: {
   seenUrls?: string[];
 }): string;
 
+export interface AskActionChip {
+  id: string;
+  label: string;
+  description: string;
+  prompt: string;
+}
+
+export declare const ASK_ACTION_CHIPS: AskActionChip[];
+
 export interface AskLinkedProject {
   title: string;
   techStack?: string[];

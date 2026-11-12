@@ -151,6 +151,8 @@ export function useOrbitState() {
     handleToggleSubTask,
     handleAddSubTask,
     handleToggleProjectLink,
+    handleAddMultipleSubTasks,
+    handleUpdateApplicationCopy,
   } = useOpportunityActions({ opportunities, updateOpportunities, setUndoAction });
 
   const handleCreateOpportunity = useCallback((newOpp: Opportunity) => {
@@ -286,6 +288,7 @@ export function useOrbitState() {
     updateOpportunities, handleCreateOpportunity, handleUpdateOpportunity, handleAdvanceStatus,
     handleArchive, handleRestoreOpportunity, handleDeleteOpportunity,
     handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
+    handleAddMultipleSubTasks, handleUpdateApplicationCopy,
     handlePromoteRadarItem, handleToggleVerifyRadarItem, handleAddProject, handleUpdateProject,
     handleDeleteProject, handleImportLocalToAccount, handleClearLocalData, handleResetGuestData,
     handleExportJson, handleImportJson,

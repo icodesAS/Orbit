@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Opportunity, OpportunityStatus, UndoAction } from '@/lib/types';
+import { Opportunity, OpportunityStatus, SubTask, UndoAction } from '@/lib/types';
 
 interface UseOpportunityActionsProps {
   opportunities: Opportunity[];
@@ -120,6 +120,38 @@ export function useOpportunityActions({
     );
   }, [updateOpportunities]);
 
+  const handleAddMultipleSubTasks = useCallback((oppId: string, newTasks: SubTask[]) => {
+    updateOpportunities((prev) =>
+      prev.map((o) => {
+        if (o.id !== oppId) return o;
+        const tasks = [...o.tasks, ...newTasks];
+        const done = tasks.filter((t) => t.done).length;
+        const total = tasks.length;
+        return {
+          ...o,
+          tasks,
+          tasksDone: done,
+          tasksTotal: total,
+          progress: total > 0 ? Math.round((done / total) * 100) : 0,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+  }, [updateOpportunities]);
+
+  const handleUpdateApplicationCopy = useCallback((oppId: string, copy: string) => {
+    updateOpportunities((prev) =>
+      prev.map((o) => {
+        if (o.id !== oppId) return o;
+        return {
+          ...o,
+          applicationCopy: copy,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+  }, [updateOpportunities]);
+
   return {
     handleAdvanceStatus,
     handleArchive,
@@ -127,5 +159,7 @@ export function useOpportunityActions({
     handleToggleSubTask,
     handleAddSubTask,
     handleToggleProjectLink,
+    handleAddMultipleSubTasks,
+    handleUpdateApplicationCopy,
   };
 }

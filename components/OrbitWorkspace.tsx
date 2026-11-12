@@ -33,6 +33,7 @@ export default function OrbitWorkspace() {
     updateOpportunities, handleCreateOpportunity, handleUpdateOpportunity,
     handleAdvanceStatus, handleArchive, handleRestoreOpportunity, handleDeleteOpportunity,
     handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
+    handleAddMultipleSubTasks, handleUpdateApplicationCopy,
     handlePromoteRadarItem, handleToggleVerifyRadarItem,
     handleAddProject, handleUpdateProject, handleDeleteProject,
     handleImportLocalToAccount, handleClearLocalData, handleResetGuestData,
@@ -273,7 +274,19 @@ export default function OrbitWorkspace() {
         </main>
 
         <MobileNavBar activeSection={activeSection} onSelectSection={setActiveSection} counts={counts} />
-        <AskAIDrawer opportunity={selectedAiOpp} allProjects={projects} userApiKey={userApiKey} firebaseUser={user} canUseAi={canUseAi} onSignIn={signIn} onClose={() => setSelectedAiOppId(null)} onSendMessage={handleAddAiMessage} onClearHistory={handleClearAiHistory} />
+        <AskAIDrawer
+          opportunity={selectedAiOpp}
+          allProjects={projects}
+          userApiKey={userApiKey}
+          firebaseUser={user}
+          canUseAi={canUseAi}
+          onSignIn={signIn}
+          onClose={() => setSelectedAiOppId(null)}
+          onSendMessage={handleAddAiMessage}
+          onClearHistory={handleClearAiHistory}
+          onApplyTasks={(tasks) => selectedAiOpp && handleAddMultipleSubTasks(selectedAiOpp.id, tasks)}
+          onApplyCopy={(copy) => selectedAiOpp && handleUpdateApplicationCopy(selectedAiOpp.id, copy)}
+        />
         <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} opportunities={opportunities} projects={projects} focusedOpportunity={focusedOpp} onSelectOpportunity={(opp) => { setSelectedFocusedId(opp.id); setActiveSection('pipeline'); }} onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)} onOpenEdit={(opp) => setEditingOppId(opp.id)} onAdvanceStatus={handleAdvanceStatus} onToggleProjectLink={handleToggleProjectLink} onOpenNewModal={() => setIsNewModalOpen(true)} onSelectSection={setActiveSection} />
         <NewOpportunityModal isOpen={isNewModalOpen} onClose={() => setIsNewModalOpen(false)} projects={projects} nextCodeNumber={nextCodeNumber} onCreate={(opp) => { handleCreateOpportunity(opp); setSelectedFocusedId(opp.id); }} />
         <EditOpportunityModal isOpen={Boolean(editingOpp)} opportunity={editingOpp} onClose={() => setEditingOppId(null)} onSave={handleUpdateOpportunity} />

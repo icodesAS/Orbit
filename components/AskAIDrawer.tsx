@@ -2,11 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowUp, RotateCcw, Lock } from 'lucide-react';
+import { X, ArrowUp, RotateCcw, Lock, ListTodo, FileText } from 'lucide-react';
 import type { User } from 'firebase/auth';
-import { Opportunity, ArsenalProject } from '@/lib/types';
+import { Opportunity, ArsenalProject, SubTask } from '@/lib/types';
 import { DEFAULT_GEMINI_MODEL } from '@/lib/config';
 import AskAIChatMessage from './AskAIChatMessage';
+import AskAIActionChips from './AskAIActionChips';
+import AskAIApplyPreview from './AskAIApplyPreview';
 import { dur, ease, spring } from '@/lib/motion';
 
 interface AskAIDrawerProps {
@@ -17,13 +19,10 @@ interface AskAIDrawerProps {
   canUseAi?: boolean;
   onSignIn?: () => Promise<any>;
   onClose: () => void;
-  onSendMessage: (
-    opportunityId: string,
-    userText: string,
-    assistantText: string,
-    sources?: { title: string; uri: string }[]
-  ) => void;
+  onSendMessage: (oppId: string, uText: string, aText: string, sources?: { title: string; uri: string }[]) => void;
   onClearHistory: (opportunityId: string) => void;
+  onApplyTasks?: (tasks: SubTask[]) => void;
+  onApplyCopy?: (copy: string) => void;
 }
 
 const SUGGESTION_PROMPTS = [
@@ -35,11 +34,13 @@ const SUGGESTION_PROMPTS = [
 export default function AskAIDrawer({
   opportunity, allProjects, userApiKey, firebaseUser,
   canUseAi = false, onSignIn, onClose, onSendMessage, onClearHistory,
+  onApplyTasks, onApplyCopy,
 }: AskAIDrawerProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastPrompt, setLastPrompt] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<{ type: 'tasks' | 'copy'; rawText: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -191,10 +192,46 @@ export default function AskAIDrawer({
                       key={msg.id}
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0, transition: { duration: dur.base, ease: ease.out } }}
+                      className="space-y-1"
                     >
                       <AskAIChatMessage message={msg} />
+                      {msg.role === 'assistant' && (
+                        <div className="flex items-center gap-2 pt-0.5 pl-1">
+                          {onApplyTasks && (msg.content.includes('- [') || msg.content.includes('* [')) && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewState({ type: 'tasks', rawText: msg.content })}
+                              className="text-[11px] font-mono text-ink-3 hover:text-ink flex items-center gap-1 transition-colors"
+                            >
+                              <ListTodo className="w-3 h-3" />
+                              <span>Apply to checklist</span>
+                            </button>
+                          )}
+                          {onApplyCopy && msg.content.length > 50 && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewState({ type: 'copy', rawText: msg.content })}
+                              className="text-[11px] font-mono text-ink-3 hover:text-ink flex items-center gap-1 transition-colors"
+                            >
+                              <FileText className="w-3 h-3" />
+                              <span>Apply to copy</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </motion.div>
                   ))
+                )}
+
+                {previewState && (
+                  <AskAIApplyPreview
+                    type={previewState.type}
+                    rawText={previewState.rawText}
+                    existingCopy={opportunity.applicationCopy}
+                    onApplyTasks={(tasks) => onApplyTasks?.(tasks)}
+                    onApplyCopy={(copy) => onApplyCopy?.(copy)}
+                    onClose={() => setPreviewState(null)}
+                  />
                 )}
 
                 {isLoading && (
@@ -219,7 +256,12 @@ export default function AskAIDrawer({
                 <div ref={messagesEndRef} />
               </div>
 
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(input); }} className="p-3 border-t border-line bg-overlay shrink-0">
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(input); }} className="p-3 border-t border-line bg-overlay shrink-0 space-y-2">
+                <AskAIActionChips
+                  onSelectChip={handleSubmit}
+                  disabled={isLoading}
+                  hasLinkedProjects={linkedProjects.length > 0}
+                />
                 <div className="relative rounded-[12px] border border-line-strong bg-overlay focus-within:border-accent/55 focus-within:ring-3 focus-within:ring-accent-ring transition-all">
                   <textarea
                     ref={textareaRef}
