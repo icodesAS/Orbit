@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { LogIn, ArrowRight } from 'lucide-react';
+import { motion } from 'motion/react';
+import { OrbitGlyph } from './OrbitGlyph';
+import { fadeUp, stagger } from '@/lib/motion';
 
 interface SignInScreenProps {
   onSignIn: () => Promise<any>;
@@ -30,57 +32,73 @@ export default function SignInScreen({
   };
 
   return (
-    <div className="min-h-screen w-screen bg-[#F5F5F3] text-[#16181D] font-sans flex items-center justify-center p-6 select-none">
-      <div className="w-full max-w-md bg-white border border-[#E5E5E1] rounded-lg p-6 space-y-6 shadow-2xs">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded bg-[#4355B9]/10 border border-[#4355B9]/20 flex items-center justify-center text-[#4355B9] font-mono font-bold text-xs">
-              OR
-            </div>
-            <span className="font-semibold text-base tracking-tight text-[#16181D]">
-              Orbit
-            </span>
-          </div>
-          <h1 className="text-xl font-semibold text-[#16181D]">
-            Opportunity <span className="font-serif italic font-normal text-[#4355B9]">Workspace</span>
+    <div className="min-h-screen w-screen bg-canvas text-ink font-sans flex items-center justify-center p-6 select-none relative">
+      <div className="absolute inset-0 dot-grid pointer-events-none" />
+
+      <motion.div
+        variants={stagger(0.05, 0.03)}
+        initial="hidden"
+        animate="show"
+        className="relative z-10 w-full max-w-[360px] bg-overlay border border-line rounded-[16px] p-8 space-y-5 shadow-[var(--shadow-sm)]"
+      >
+        <motion.div variants={fadeUp} className="flex items-center gap-2.5">
+          <OrbitGlyph size="md" className="text-ink" />
+          <span className="font-semibold text-[16px] tracking-[-0.015em] text-ink">
+            Orbit
+          </span>
+        </motion.div>
+
+        <motion.div variants={fadeUp} className="space-y-1.5">
+          <h1 className="text-[18px] font-semibold tracking-[-0.015em] text-ink">
+            Sign in to sync your workspace
           </h1>
-          <p className="text-xs text-[#6B7280] leading-relaxed">
-            Track fellowships, residencies, hackathons, and developer perks alongside your project Arsenal.
+          <p className="text-[13.5px] text-ink-2 leading-relaxed">
+            Tracks, projects and your radar sync across devices.
           </p>
-        </div>
+        </motion.div>
 
         {error && (
-          <div className="p-2.5 rounded bg-[#FEE4E2] border border-[#FECDCA] text-xs text-[#D92D20]">
+          <div className="p-2.5 rounded-[8px] bg-bad-soft text-[12.5px] text-bad">
             {error}
           </div>
         )}
 
-        <div className="space-y-4">
+        <motion.div variants={fadeUp} className="space-y-3 pt-1">
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={signingIn || authLoading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] disabled:opacity-50 text-white font-medium text-xs transition-colors shadow-2xs"
+            data-loading={signingIn || undefined}
+            className="btn btn-primary btn-lg w-full"
           >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>{signingIn ? 'Signing in...' : 'Sign in with Google'}</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81Z"
+              />
+            </svg>
+            <span>Continue with Google</span>
           </button>
 
-          <div className="space-y-2 pt-2 border-t border-[#E5E5E1]">
-            <button
-              type="button"
-              onClick={onContinueAsGuest}
-              className="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-white hover:bg-[#F5F5F3] border border-[#E5E5E1] text-[#16181D] font-medium text-xs transition-colors"
-            >
-              <span>Continue as guest</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#6B7280]" />
-            </button>
-            <p className="text-[11px] text-[#6B7280] text-center leading-relaxed">
-              Saved on this device only. Clearing browser data deletes it. Sign in to sync and use AI.
-            </p>
+          <div className="flex items-center gap-3 py-1">
+            <div className="h-px flex-1 bg-line" />
+            <span className="font-mono text-[11px] text-ink-3">or</span>
+            <div className="h-px flex-1 bg-line" />
           </div>
-        </div>
-      </div>
+
+          <button
+            type="button"
+            onClick={onContinueAsGuest}
+            className="btn btn-ghost btn-lg w-full"
+          >
+            Continue as guest
+          </button>
+
+          <p className="font-mono text-[11.5px] text-ink-3 text-center leading-relaxed">
+            Saved on this device only. Clearing browser data deletes it. Sign in to sync and use AI.
+          </p>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

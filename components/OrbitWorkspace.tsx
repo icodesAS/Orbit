@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import { MotionConfig, motion } from 'motion/react';
 import { useOrbitState } from '@/hooks/use-orbit-state';
 import Sidebar, { NavSection } from './Sidebar';
 import TopBar from './TopBar';
@@ -18,6 +19,8 @@ import AskAIDrawer from './AskAIDrawer';
 import ShortcutsModal from './ShortcutsModal';
 import UndoToast from './UndoToast';
 import ErrorToast from './ErrorToast';
+import { OrbitGlyph } from './OrbitGlyph';
+import { dur, ease, fadeUp, spring, stagger } from '@/lib/motion';
 
 export default function OrbitWorkspace() {
   const {
@@ -30,7 +33,8 @@ export default function OrbitWorkspace() {
     handleAdvanceStatus, handleArchive, handleToggleSubTask, handleAddSubTask,
     handleToggleProjectLink, handlePromoteRadarItem, handleToggleVerifyRadarItem,
     handleAddProject, handleUpdateProject, handleDeleteProject,
-    handleImportLocalToAccount, handleClearLocalData, handleExportJson, handleImportJson,
+    handleImportLocalToAccount, handleClearLocalData, handleResetGuestData,
+    handleExportJson, handleImportJson,
   } = useOrbitState();
 
   const [activeSection, setActiveSection] = useState<NavSection>('today');
@@ -58,6 +62,12 @@ export default function OrbitWorkspace() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
       if (e.key === 'Escape') {
         setIsCommandPaletteOpen(false);
         setIsNewModalOpen(false);
@@ -68,12 +78,12 @@ export default function OrbitWorkspace() {
         return;
       }
 
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsCommandPaletteOpen((prev) => !prev);
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (
+        tag === 'input' || tag === 'textarea' || tag === 'select' ||
+        target?.isContentEditable || target?.closest('[role="dialog"]') || target?.closest('[role="listbox"]')
+      ) {
         return;
       }
 
@@ -87,10 +97,18 @@ export default function OrbitWorkspace() {
       else if (focusedId) {
         const visible = opportunities.filter((o) => o.status !== 'archived');
         const curr = visible.findIndex((o) => o.id === focusedId);
-        if (key === 'j') { e.preventDefault(); const n = (curr + 1) % visible.length; if (visible[n]) setSelectedFocusedId(visible[n].id); }
-        else if (key === 'k') { e.preventDefault(); const p = (curr - 1 + visible.length) % visible.length; if (visible[p]) setSelectedFocusedId(visible[p].id); }
-        else if (key === 'enter' || e.code === 'Space') { e.preventDefault(); setExpandedMap((prev) => ({ ...prev, [focusedId]: !prev[focusedId] })); }
-        else if (key === 'e') { e.preventDefault(); setEditingOppId(focusedId); }
+        if (key === 'j' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const n = (curr + 1) % Math.max(1, visible.length);
+          if (visible[n]) setSelectedFocusedId(visible[n].id);
+        } else if (key === 'k' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const p = (curr - 1 + visible.length) % Math.max(1, visible.length);
+          if (visible[p]) setSelectedFocusedId(visible[p].id);
+        } else if (key === 'enter' || e.code === 'Space') {
+          e.preventDefault();
+          setExpandedMap((prev) => ({ ...prev, [focusedId]: !prev[focusedId] }));
+        } else if (key === 'e') { e.preventDefault(); setEditingOppId(focusedId); }
         else if (key === 'p') { e.preventDefault(); setActiveProjectPickerOppId((prev) => (prev === focusedId ? null : focusedId)); }
         else if (key === 'a') { e.preventDefault(); setSelectedAiOppId(focusedId); }
         else if (key === 's') { e.preventDefault(); handleAdvanceStatus(focusedId); }
@@ -126,171 +144,126 @@ export default function OrbitWorkspace() {
 
   if (isFirebaseReady && !user && !isGuestContinued) {
     return (
-      <SignInScreen
-        onSignIn={signIn}
-        onContinueAsGuest={handleContinueAsGuest}
-        authLoading={authLoading}
-      />
+      <MotionConfig reducedMotion="user" transition={spring.smooth}>
+        <SignInScreen onSignIn={signIn} onContinueAsGuest={handleContinueAsGuest} authLoading={authLoading} />
+      </MotionConfig>
     );
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F5F5F3] text-[#16181D] font-sans select-none">
-      <Sidebar
-        activeSection={activeSection} onSelectSection={setActiveSection} counts={counts}
-        isSignedIn={Boolean(user)}
-        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} onOpenNewModal={() => setIsNewModalOpen(true)}
-        onOpenShortcutsModal={() => setIsShortcutsOpen(true)}
-      />
-
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#F5F5F3]">
-        <TopBar
-          opportunities={opportunities}
-          isGuest={!user}
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          onJumpToOpportunity={(id) => { setSelectedFocusedId(id); setActiveSection('pipeline'); }}
+    <MotionConfig reducedMotion="user" transition={spring.smooth}>
+      <div className="flex h-screen w-screen overflow-hidden bg-canvas text-ink font-sans select-none">
+        <Sidebar
+          activeSection={activeSection} onSelectSection={setActiveSection} counts={counts}
+          isSignedIn={Boolean(user)} userName={user?.displayName || user?.email}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} onOpenNewModal={() => setIsNewModalOpen(true)}
+          onOpenShortcutsModal={() => setIsShortcutsOpen(true)}
         />
 
-        {activeSection === 'today' && (
-          <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
-            <TodayView
-              opportunities={opportunities}
-              projectsMap={projectsMap}
-              focusedId={focusedId}
-              unreviewedRadarCount={counts.radarUnreviewed}
-              canUseAi={canUseAi}
-              onFocusOpportunity={setSelectedFocusedId}
-              onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
-              onAdvanceStatus={handleAdvanceStatus}
-              onJumpToRadar={() => setActiveSection('radar')}
-              onOpenNewModal={() => setIsNewModalOpen(true)}
-            />
-          </div>
-        )}
+        <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-canvas">
+          <TopBar
+            opportunities={opportunities} isGuest={!user}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            onJumpToOpportunity={(id) => { setSelectedFocusedId(id); setActiveSection('pipeline'); }}
+          />
 
-        {activeSection === 'pipeline' && (
-          <div className="flex-1 overflow-y-auto p-5 space-y-5 pb-20 md:pb-8">
-            {opportunities.length === 0 ? (
-              <div className="p-8 text-center rounded-lg border border-[#E5E5E1] bg-white space-y-3 max-w-xl mx-auto my-12 shadow-2xs">
-                <p className="text-xs text-[#6B7280]">Your pipeline is empty.</p>
-                <button
-                  type="button"
-                  onClick={() => setIsNewModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg bg-[#4355B9] text-white text-xs font-medium hover:bg-[#3848A3] transition-colors"
-                >
-                  Create Opportunity
-                </button>
-              </div>
-            ) : (
-              [
-                { title: 'Active Pursuits', badge: 'TIER 1', items: activeOpps },
-                { title: 'Solid Bets & Waitlists', badge: 'TIER 2', items: waitlistOpps },
-                { title: 'Submitted / Pending Verdict', badge: 'TIER 3', items: submittedOpps },
-              ].map((tier) => (
-                <PipelineTierSection
-                  key={tier.badge}
-                  title={tier.title}
-                  badge={tier.badge}
-                  opportunities={tier.items}
-                  allProjects={projects}
-                  focusedId={focusedId}
-                  expandedMap={expandedMap}
-                  selectedAiOppId={selectedAiOppId}
-                  activeProjectPickerOppId={activeProjectPickerOppId}
-                  canUseAi={canUseAi}
-                  onFocusOpportunity={setSelectedFocusedId}
-                  onToggleExpand={(id) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }))}
-                  onOpenEdit={(opp) => setEditingOppId(opp.id)}
-                  onToggleProjectPicker={(id) => setActiveProjectPickerOppId((prev) => (prev === id ? null : id))}
-                  onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
-                  onAdvanceStatus={handleAdvanceStatus}
-                  onToggleProjectLink={handleToggleProjectLink}
-                  onToggleSubTask={handleToggleSubTask}
-                  onAddSubTask={handleAddSubTask}
-                  onArchive={handleArchive}
-                />
-              ))
+          <motion.div
+            key={activeSection}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: dur.base, ease: ease.out } }}
+            className="flex-1 overflow-y-auto pb-20 md:pb-8"
+          >
+            {activeSection === 'today' && (
+              <TodayView
+                opportunities={opportunities} projectsMap={projectsMap} focusedId={focusedId}
+                unreviewedRadarCount={counts.radarUnreviewed} canUseAi={canUseAi}
+                onFocusOpportunity={setSelectedFocusedId} onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
+                onOpenEdit={(opp) => setEditingOppId(opp.id)} onAdvanceStatus={handleAdvanceStatus}
+                onJumpToRadar={() => setActiveSection('radar')} onJumpToPipeline={() => setActiveSection('pipeline')}
+                onOpenNewModal={() => setIsNewModalOpen(true)}
+              />
             )}
-          </div>
-        )}
 
-        {activeSection === 'radar' && (
-          <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
-            <RadarView
-              radarItems={activeRadarItems}
-              projectsMap={projectsMap}
-              allProjects={projects}
-              availableDates={availableRadarDates}
-              selectedDate={selectedRadarDate || availableRadarDates[0] || ''}
-              onSelectDate={setSelectedRadarDate}
-              isSignedIn={Boolean(user)}
-              onConfirmTrack={onPromoteAndFocus}
-              onToggleVerifyRadarItem={handleToggleVerifyRadarItem}
-            />
-          </div>
-        )}
+            {activeSection === 'pipeline' && (
+              <div className="pt-10 px-8 max-w-[760px] mx-auto space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 pb-5 border-b border-line">
+                  <div>
+                    <h1 className="text-[24px] leading-[1.2] font-semibold tracking-[-0.022em] text-ink">Pipeline</h1>
+                    <p className="text-[13.5px] text-ink-2 mt-1">Active builds, waitlist watch and submitted tracks.</p>
+                  </div>
+                  <button type="button" onClick={() => setIsNewModalOpen(true)} className="btn btn-secondary self-start sm:self-auto">
+                    <span>New track</span><span className="kbd">N</span>
+                  </button>
+                </div>
 
-        {activeSection === 'arsenal' && (
-          <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
-            <ArsenalView
-              projects={projects}
-              onAddProject={handleAddProject}
-              onUpdateProject={handleUpdateProject}
-              onDeleteProject={handleDeleteProject}
-            />
-          </div>
-        )}
+                {opportunities.length === 0 ? (
+                  <motion.div variants={stagger(0.06, 0.04)} initial="hidden" animate="show" className="min-h-[360px] rounded-[12px] dot-grid flex flex-col items-center justify-center text-center px-6 py-12 gap-3">
+                    <motion.div variants={fadeUp}><OrbitGlyph size="lg" /></motion.div>
+                    <motion.h2 variants={fadeUp} className="text-[15px] font-semibold text-ink tracking-[-0.01em] mt-1">Your pipeline is empty</motion.h2>
+                    <motion.p variants={fadeUp} className="text-[13.5px] text-ink-2 max-w-[42ch] leading-relaxed">Create your first track or promote an opportunity from Radar.</motion.p>
+                    <motion.div variants={fadeUp} className="pt-2">
+                      <button type="button" onClick={() => setIsNewModalOpen(true)} className="btn btn-primary"><span>New track</span><span className="kbd">N</span></button>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <div className="space-y-6">
+                    {[
+                      { title: 'Active Build (Tier 1)', badge: 'TIER 1', items: activeOpps },
+                      { title: 'Waitlist Watch (Tier 2)', badge: 'TIER 2', items: waitlistOpps },
+                      { title: 'Submitted (Tier 3)', badge: 'TIER 3', items: submittedOpps },
+                    ].map((tier) => (
+                      <PipelineTierSection
+                        key={tier.badge} title={tier.title} badge={tier.badge} opportunities={tier.items}
+                        allProjects={projects} focusedId={focusedId} expandedMap={expandedMap}
+                        selectedAiOppId={selectedAiOppId} activeProjectPickerOppId={activeProjectPickerOppId}
+                        canUseAi={canUseAi} onFocusOpportunity={setSelectedFocusedId}
+                        onToggleExpand={(id) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }))}
+                        onOpenEdit={(opp) => setEditingOppId(opp.id)}
+                        onToggleProjectPicker={(id) => setActiveProjectPickerOppId((prev) => (prev === id ? null : id))}
+                        onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)} onAdvanceStatus={handleAdvanceStatus}
+                        onToggleProjectLink={handleToggleProjectLink} onToggleSubTask={handleToggleSubTask}
+                        onAddSubTask={handleAddSubTask} onArchive={handleArchive} onOpenNewModal={() => setIsNewModalOpen(true)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
-        {activeSection === 'settings' && (
-          <div className="flex-1 overflow-y-auto pb-20 md:pb-8">
-            <SettingsView
-              userApiKey={userApiKey} onUpdateApiKey={setUserApiKey}
-              isFirebaseReady={isFirebaseReady} user={user} authLoading={authLoading}
-              onSignIn={signIn} onSignOut={signOut}
-              onImportLocalToAccount={handleImportLocalToAccount}
-              onClearLocalData={handleClearLocalData}
-              onExportJson={handleExportJson} onImportJson={handleImportJson}
-            />
-          </div>
-        )}
-      </main>
+            {activeSection === 'radar' && (
+              <RadarView
+                radarItems={activeRadarItems} projectsMap={projectsMap} allProjects={projects}
+                availableDates={availableRadarDates} selectedDate={selectedRadarDate || availableRadarDates[0] || ''}
+                onSelectDate={setSelectedRadarDate} isSignedIn={Boolean(user)}
+                onConfirmTrack={onPromoteAndFocus} onToggleVerifyRadarItem={handleToggleVerifyRadarItem}
+              />
+            )}
 
-      <MobileNavBar activeSection={activeSection} onSelectSection={setActiveSection} counts={counts} />
+            {activeSection === 'arsenal' && (
+              <ArsenalView projects={projects} onAddProject={handleAddProject} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} />
+            )}
 
-      <AskAIDrawer
-        opportunity={selectedAiOpp} allProjects={projects} userApiKey={userApiKey}
-        firebaseUser={user} canUseAi={canUseAi} onSignIn={signIn}
-        onClose={() => setSelectedAiOppId(null)} onSendMessage={handleAddAiMessage}
-        onClearHistory={handleClearAiHistory}
-      />
+            {activeSection === 'settings' && (
+              <SettingsView
+                userApiKey={userApiKey} onUpdateApiKey={setUserApiKey} isFirebaseReady={isFirebaseReady}
+                user={user} authLoading={authLoading} opportunitiesCount={opportunities.length} projectsCount={projects.length}
+                onSignIn={signIn} onSignOut={signOut} onImportLocalToAccount={handleImportLocalToAccount}
+                onClearLocalData={handleClearLocalData} onResetGuestData={handleResetGuestData}
+                onExportJson={handleExportJson} onImportJson={handleImportJson}
+              />
+            )}
+          </motion.div>
+        </main>
 
-      <CommandPalette
-        isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)}
-        opportunities={opportunities} projects={projects} focusedOpportunity={focusedOpp}
-        onSelectOpportunity={(opp) => { setSelectedFocusedId(opp.id); setActiveSection('pipeline'); }}
-        onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)} onOpenEdit={(opp) => setEditingOppId(opp.id)}
-        onAdvanceStatus={handleAdvanceStatus} onToggleProjectLink={handleToggleProjectLink}
-        onOpenNewModal={() => setIsNewModalOpen(true)} onSelectSection={setActiveSection}
-      />
-
-      <NewOpportunityModal
-        isOpen={isNewModalOpen} onClose={() => setIsNewModalOpen(false)}
-        projects={projects} nextCodeNumber={nextCodeNumber}
-        onCreate={(opp) => { handleCreateOpportunity(opp); setSelectedFocusedId(opp.id); }}
-      />
-
-      <EditOpportunityModal
-        isOpen={Boolean(editingOpp)} opportunity={editingOpp}
-        onClose={() => setEditingOppId(null)} onSave={handleUpdateOpportunity}
-      />
-
-      <ShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <UndoToast
-        undoAction={undoAction}
-        onUndo={() => { undoAction?.restore(); setUndoAction(null); }}
-        onDismiss={() => setUndoAction(null)}
-      />
-      <ErrorToast message={errorToast} onDismiss={() => setErrorToast(null)} />
-    </div>
+        <MobileNavBar activeSection={activeSection} onSelectSection={setActiveSection} counts={counts} />
+        <AskAIDrawer opportunity={selectedAiOpp} allProjects={projects} userApiKey={userApiKey} firebaseUser={user} canUseAi={canUseAi} onSignIn={signIn} onClose={() => setSelectedAiOppId(null)} onSendMessage={handleAddAiMessage} onClearHistory={handleClearAiHistory} />
+        <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} opportunities={opportunities} projects={projects} focusedOpportunity={focusedOpp} onSelectOpportunity={(opp) => { setSelectedFocusedId(opp.id); setActiveSection('pipeline'); }} onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)} onOpenEdit={(opp) => setEditingOppId(opp.id)} onAdvanceStatus={handleAdvanceStatus} onToggleProjectLink={handleToggleProjectLink} onOpenNewModal={() => setIsNewModalOpen(true)} onSelectSection={setActiveSection} />
+        <NewOpportunityModal isOpen={isNewModalOpen} onClose={() => setIsNewModalOpen(false)} projects={projects} nextCodeNumber={nextCodeNumber} onCreate={(opp) => { handleCreateOpportunity(opp); setSelectedFocusedId(opp.id); }} />
+        <EditOpportunityModal isOpen={Boolean(editingOpp)} opportunity={editingOpp} onClose={() => setEditingOppId(null)} onSave={handleUpdateOpportunity} />
+        <ShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
+        <UndoToast undoAction={undoAction} onUndo={() => { undoAction?.restore(); setUndoAction(null); }} onDismiss={() => setUndoAction(null)} />
+        <ErrorToast message={errorToast} onDismiss={() => setErrorToast(null)} />
+      </div>
+    </MotionConfig>
   );
 }

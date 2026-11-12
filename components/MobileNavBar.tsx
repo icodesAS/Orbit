@@ -45,22 +45,21 @@ export default function MobileNavBar({
 
   return (
     <>
-      {/* Settings popover menu on mobile */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-xs md:hidden"
+          className="fixed inset-0 z-40 bg-ink/20 md:hidden"
           onClick={() => setIsMenuOpen(false)}
         >
           <div
-            className="absolute bottom-14 right-3 w-48 bg-white border border-[#E5E5E1] rounded-lg shadow-lg p-1.5 space-y-1 text-xs"
+            className="absolute bottom-14 right-3 w-48 bg-overlay border border-line rounded-[12px] shadow-[var(--shadow-pop)] p-1.5 space-y-1 text-xs"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-2 py-1 border-b border-[#E5E5E1] text-[11px] font-semibold text-[#6B7280]">
+            <div className="flex items-center justify-between px-2 py-1 border-b border-line text-[11px] font-mono uppercase tracking-[0.06em] text-ink-3">
               <span>Menu</span>
               <button
                 type="button"
                 onClick={() => setIsMenuOpen(false)}
-                className="text-[#6B7280] hover:text-[#16181D]"
+                className="text-ink-3 hover:text-ink"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -71,19 +70,18 @@ export default function MobileNavBar({
                 onSelectSection('settings');
                 setIsMenuOpen(false);
               }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left text-[#16181D] hover:bg-[#F5F5F3] font-medium"
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-[8px] text-left text-ink hover:bg-hover font-medium"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#6B7280]" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-ink-3" />
               <span>Settings</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Fixed bottom navigation tabs */}
       <nav
         aria-label="Mobile Navigation"
-        className="md:hidden fixed bottom-0 inset-x-0 h-13 bg-white border-t border-[#E5E5E1] flex items-center justify-around px-2 z-30 select-none"
+        className="md:hidden fixed bottom-0 inset-x-0 h-13 bg-sidebar border-t border-line flex items-center justify-around px-2 z-30 select-none"
       >
         {mainTabs.map((tab) => {
           const Icon = tab.icon;
@@ -96,16 +94,16 @@ export default function MobileNavBar({
                 onSelectSection(tab.id);
                 setIsMenuOpen(false);
               }}
-              className={`flex-1 flex flex-col items-center justify-center py-1 rounded transition-colors relative ${
+              className={`flex-1 flex flex-col items-center justify-center py-1 rounded-[8px] transition-colors relative ${
                 isActive
-                  ? 'text-[#4355B9] font-medium'
-                  : 'text-[#6B7280] hover:text-[#16181D]'
+                  ? 'text-ink font-medium bg-pressed'
+                  : 'text-ink-3 hover:text-ink'
               }`}
             >
               <div className="relative">
                 <Icon className="w-4 h-4 mb-0.5 shrink-0" />
                 {typeof tab.count === 'number' && tab.count > 0 && (
-                  <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 rounded-full bg-[#4355B9] text-white text-[9px] font-mono flex items-center justify-center">
+                  <span className="absolute -top-1 -right-2.5 px-1 min-w-[14px] h-3.5 rounded-full bg-primary text-primary-fg text-[9px] font-mono flex items-center justify-center">
                     {tab.count}
                   </span>
                 )}
@@ -115,14 +113,13 @@ export default function MobileNavBar({
           );
         })}
 
-        {/* Menu Tab */}
         <button
           type="button"
           onClick={() => setIsMenuOpen((prev) => !prev)}
-          className={`flex-1 flex flex-col items-center justify-center py-1 rounded transition-colors ${
+          className={`flex-1 flex flex-col items-center justify-center py-1 rounded-[8px] transition-colors ${
             activeSection === 'settings' || isMenuOpen
-              ? 'text-[#4355B9] font-medium'
-              : 'text-[#6B7280] hover:text-[#16181D]'
+              ? 'text-ink font-medium bg-pressed'
+              : 'text-ink-3 hover:text-ink'
           }`}
           title="More options"
         >

@@ -13,7 +13,7 @@ const SHORTCUTS = [
   { key: 'J / K', desc: 'Navigate between opportunities' },
   { key: 'Enter / Space', desc: 'Expand or collapse sub-tasks' },
   { key: 'E', desc: 'Edit focused opportunity details' },
-  { key: 'A', desc: 'Open Scoped Ask AI drawer' },
+  { key: 'A', desc: 'Open Ask AI drawer' },
   { key: 'S', desc: 'Advance status (Active → Submitted)' },
   { key: 'P', desc: 'Link Arsenal project to focused item' },
   { key: '⌘K / Ctrl+K', desc: 'Open Command Palette' },
@@ -27,49 +27,52 @@ export default function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-xs select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/24 select-none"
       onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg bg-white border border-[#E5E5E1] shadow-2xl overflow-hidden"
+        className="w-full max-w-[460px] rounded-[16px] bg-overlay border border-line shadow-[var(--shadow-modal)] overflow-hidden"
         role="dialog"
         aria-modal="true"
-        aria-label="Orbit Keyboard Shortcuts"
+        aria-label="Keyboard shortcuts"
       >
-        <div className="px-5 py-3.5 border-b border-[#E5E5E1] flex items-center justify-between bg-white">
+        <div className="h-14 px-6 border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Keyboard className="w-4 h-4 text-[#4355B9]" />
-            <h2 className="text-sm font-semibold text-[#16181D]">
-              Keyboard Shortcuts
+            <Keyboard className="w-4 h-4 text-ink-3" />
+            <h2 className="text-[15px] font-semibold text-ink">
+              Keyboard shortcuts
             </h2>
           </div>
           <button
             type="button"
+            aria-label="Close dialog"
             onClick={onClose}
-            className="text-[#6B7280] hover:text-[#16181D] p-1 rounded font-mono text-xs"
+            className="btn btn-ghost btn-icon"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-4 space-y-2 divide-y divide-[#E5E5E1] max-h-[70vh] overflow-y-auto text-xs">
+        <div className="px-6 py-4 divide-y divide-line-faint max-h-[70vh] overflow-y-auto text-[13px]">
           {SHORTCUTS.map((s, idx) => (
             <div
               key={idx}
-              className={`flex items-center justify-between py-1.5 ${
-                idx === 0 ? '' : 'pt-2'
-              }`}
+              className="flex items-center justify-between py-2.5 gap-3"
             >
-              <span className="text-[#16181D]">{s.desc}</span>
-              <kbd className="font-mono text-[11px] text-[#16181D] bg-[#F5F5F3] border border-[#E5E5E1] px-2 py-0.5 rounded shadow-2xs shrink-0">
-                {s.key}
-              </kbd>
+              <span className="text-ink-2">{s.desc}</span>
+              <span className="kbd shrink-0">{s.key}</span>
             </div>
           ))}
         </div>
 
-        <div className="px-5 py-2.5 bg-[#F5F5F3] border-t border-[#E5E5E1] flex items-center justify-between text-[11px] font-mono text-[#6B7280]">
+        <div className="h-12 px-6 bg-raised border-t border-line flex items-center justify-between text-[11px] font-mono text-ink-3">
           <span>ORBIT KEYMAP</span>
           <span>Esc to close</span>
         </div>

@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
+import { ExternalLink } from 'lucide-react';
 import { AIChatMessage } from '@/lib/types';
 import { isValidHttpsUrl } from '@/lib/url';
-import { CheckCircle2, ExternalLink } from 'lucide-react';
 
 interface AskAIChatMessageProps {
   message: AIChatMessage;
@@ -12,45 +12,40 @@ interface AskAIChatMessageProps {
 export default function AskAIChatMessage({ message }: AskAIChatMessageProps) {
   const isUser = message.role === 'user';
 
-  return (
-    <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-      <div className="flex items-center gap-2 mb-1 text-[10px] font-mono text-[#6B7280]">
-        <span>{isUser ? 'BUILDER' : 'ORBIT AI'}</span>
-        <span>·</span>
-        <span>{message.createdAt}</span>
+  if (isUser) {
+    return (
+      <div className="flex flex-col items-end">
+        <div className="max-w-[85%] rounded-[12px] bg-sunken px-3.5 py-2 text-[14px] leading-[1.5] text-ink whitespace-pre-wrap">
+          {message.content}
+        </div>
       </div>
-      <div
-        className={`max-w-[92%] rounded-lg px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
-          isUser
-            ? 'bg-[#4355B9]/10 border border-[#4355B9]/25 text-[#16181D]'
-            : 'bg-[#F5F5F3] border border-[#E5E5E1] text-[#16181D]'
-        }`}
-      >
-        {message.content}
+    );
+  }
 
-        {message.sources && message.sources.length > 0 && (
-          <div className="mt-2.5 pt-2 border-t border-[#E5E5E1] space-y-1">
-            <div className="text-[10px] font-mono text-[#6B7280] flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-[#067647]" />
-              <span>Search Grounding Sources:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {message.sources.filter((src) => isValidHttpsUrl(src.uri)).map((src, i) => (
-                <a
-                  key={i}
-                  href={src.uri}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-mono text-[#4355B9] hover:underline"
-                >
-                  <ExternalLink className="w-2.5 h-2.5" />
-                  <span className="truncate max-w-[200px]">{src.title}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
+  return (
+    <div className="flex flex-col items-start space-y-2">
+      <div className="text-[14px] leading-[1.6] text-ink-2 whitespace-pre-wrap">
+        {message.content}
       </div>
+
+      {message.sources && message.sources.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {message.sources
+            .filter((src) => isValidHttpsUrl(src.uri))
+            .map((src, i) => (
+              <a
+                key={i}
+                href={src.uri}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="chip !h-[22px] hover:border-line-strong transition-colors"
+              >
+                <span className="truncate max-w-[200px]">{src.title}</span>
+                <ExternalLink className="w-3 h-3 text-ink-3 shrink-0" />
+              </a>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

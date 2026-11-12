@@ -11,7 +11,10 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { NavSection } from './MobileNavBar';
+import { OrbitGlyph } from './OrbitGlyph';
+import { spring } from '@/lib/motion';
 
 export type { NavSection };
 
@@ -25,6 +28,7 @@ interface SidebarProps {
     arsenal: number;
   };
   isSignedIn?: boolean;
+  userName?: string | null;
   onOpenCommandPalette: () => void;
   onOpenNewModal: () => void;
   onOpenShortcutsModal: () => void;
@@ -35,6 +39,7 @@ export default function Sidebar({
   onSelectSection,
   counts,
   isSignedIn = false,
+  userName,
   onOpenNewModal,
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -76,38 +81,39 @@ export default function Sidebar({
     },
   ];
 
+  const displayName = isSignedIn ? userName || 'Account' : 'Guest';
+  const initial = (displayName[0] || 'G').toUpperCase();
+
   return (
     <aside
-      className={`hidden md:flex flex-col justify-between h-screen bg-canvas-sunken border-r border-line select-none shrink-0 z-30 transition-[width] duration-120 ease-out ${
-        isCollapsed ? 'w-14' : 'w-[220px]'
+      className={`hidden md:flex flex-col justify-between h-screen bg-sidebar border-r border-line select-none shrink-0 z-30 transition-[width] duration-150 ease-out ${
+        isCollapsed ? 'w-14' : 'w-[256px]'
       }`}
       aria-label="Primary Navigation"
     >
       <div className="flex flex-col min-w-0">
-        {/* Workspace Brand & Collapse Toggle */}
-        <div className="h-11 flex items-center justify-between px-3.5 border-b border-line gap-2">
+        {/* Header */}
+        <div className="h-12 flex items-center justify-between px-3.5 border-b border-line gap-2">
           <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-            <span className="font-semibold text-[13px] tracking-tight text-ink">
-              Orbit
-            </span>
-            {!isCollapsed && isSignedIn && (
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-success shrink-0"
-                title="Synced with cloud"
-                aria-label="Synced with cloud"
-              />
-            )}
-            {!isCollapsed && !isSignedIn && (
-              <span className="font-mono text-[10px] text-ink-3">
-                guest
-              </span>
+            <OrbitGlyph size="sm" className="text-ink" />
+            {!isCollapsed && (
+              <>
+                <span className="font-semibold text-[14px] tracking-[-0.01em] text-ink truncate">
+                  Orbit
+                </span>
+                <span
+                  className={`dot ${isSignedIn ? 'dot-ok' : ''} shrink-0`}
+                  title={isSignedIn ? 'Synced with cloud' : 'Saved in this browser only'}
+                  aria-label={isSignedIn ? 'Synced with cloud' : 'Saved in this browser only'}
+                />
+              </>
             )}
           </div>
 
           <button
             type="button"
             onClick={() => setIsCollapsed((prev) => !prev)}
-            className="p-1 rounded text-ink-3 hover:text-ink hover:bg-hover transition-colors shrink-0"
+            className="btn btn-ghost btn-icon shrink-0"
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -119,25 +125,21 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* New Opportunity Track CTA */}
-        <div className="p-2 border-b border-line">
+        {/* New Track Button */}
+        <div className="p-2.5 border-b border-line">
           <button
             type="button"
             onClick={onOpenNewModal}
             title="New track (N)"
-            className={`w-full h-[30px] flex items-center rounded-md border border-line-strong bg-surface hover:bg-hover text-ink text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
-              isCollapsed ? 'justify-center px-0' : 'px-2.5 justify-between'
+            className={`btn btn-secondary w-full ${
+              isCollapsed ? '!px-0 justify-center' : 'justify-between'
             }`}
           >
             <span className="flex items-center gap-2 truncate">
               <Plus className="w-3.5 h-3.5 text-ink-3 shrink-0" />
               {!isCollapsed && <span className="truncate">New track</span>}
             </span>
-            {!isCollapsed && (
-              <span className="font-mono text-[11px] text-ink-3">
-                N
-              </span>
-            )}
+            {!isCollapsed && <span className="kbd">N</span>}
           </button>
         </div>
 
@@ -152,16 +154,27 @@ export default function Sidebar({
                 type="button"
                 onClick={() => onSelectSection(item.id)}
                 title={`${item.label} (${item.shortcut})`}
-                className={`w-full h-[30px] flex items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
-                  isCollapsed ? 'justify-center px-0' : 'justify-between px-2'
+                className={`relative w-full h-8 flex items-center rounded-[8px] transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
+                  isCollapsed ? 'justify-center px-0' : 'justify-between px-2.5'
                 } ${
                   isActive
-                    ? 'bg-selected text-ink font-medium'
+                    ? 'text-ink font-medium'
                     : 'text-ink-2 hover:text-ink hover:bg-hover'
                 }`}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Icon className="w-4 h-4 shrink-0 text-ink-3" />
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-active"
+                    transition={spring.snappy}
+                    className="absolute inset-0 rounded-[8px] bg-pressed -z-10"
+                  />
+                )}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon
+                    className={`w-4 h-4 shrink-0 transition-colors ${
+                      isActive ? 'text-ink' : 'text-ink-3'
+                    }`}
+                  />
                   {!isCollapsed && (
                     <span className="text-[13px] truncate">{item.label}</span>
                   )}
@@ -178,21 +191,52 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Footer / Settings Single Row */}
-      <div className="p-2 border-t border-line">
+      {/* Footer: Settings + User Chip */}
+      <div className="p-2 border-t border-line space-y-1">
         <button
           type="button"
           onClick={() => onSelectSection('settings')}
           title="Settings"
-          className={`w-full h-[30px] flex items-center rounded-md transition-colors text-ink-2 hover:text-ink hover:bg-hover ${
-            isCollapsed ? 'justify-center px-0' : 'px-2'
-          } ${activeSection === 'settings' ? 'bg-selected text-ink font-medium' : ''}`}
+          className={`relative w-full h-8 flex items-center rounded-[8px] transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
+            isCollapsed ? 'justify-center px-0' : 'px-2.5'
+          } ${
+            activeSection === 'settings'
+              ? 'text-ink font-medium'
+              : 'text-ink-2 hover:text-ink hover:bg-hover'
+          }`}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <SlidersHorizontal className="w-4 h-4 shrink-0 text-ink-3" />
+          {activeSection === 'settings' && (
+            <motion.span
+              layoutId="nav-active"
+              transition={spring.snappy}
+              className="absolute inset-0 rounded-[8px] bg-pressed -z-10"
+            />
+          )}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <SlidersHorizontal
+              className={`w-4 h-4 shrink-0 ${
+                activeSection === 'settings' ? 'text-ink' : 'text-ink-3'
+              }`}
+            />
             {!isCollapsed && <span className="text-[13px] truncate">Settings</span>}
           </div>
         </button>
+
+        {!isCollapsed && (
+          <div className="px-2.5 py-1.5 flex items-center justify-between gap-2 rounded-[8px]">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-5 h-5 rounded-full bg-sunken border border-line font-mono text-[10px] font-medium text-ink-2 flex items-center justify-center shrink-0">
+                {initial}
+              </span>
+              <span className="text-[12.5px] text-ink-2 truncate font-medium">
+                {displayName}
+              </span>
+            </div>
+            <span className="font-mono text-[11px] text-ink-3 shrink-0">
+              {isSignedIn ? 'Synced' : 'Local only'}
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   );

@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UndoAction } from '@/lib/types';
 import { RotateCcw } from 'lucide-react';
+import { spring } from '@/lib/motion';
 
 interface UndoToastProps {
   undoAction: UndoAction | null;
@@ -11,12 +12,16 @@ interface UndoToastProps {
   onDismiss?: () => void;
 }
 
-export default function UndoToast({ undoAction, onUndo, onDismiss }: UndoToastProps) {
+export default function UndoToast({
+  undoAction,
+  onUndo,
+  onDismiss,
+}: UndoToastProps) {
   useEffect(() => {
     if (!undoAction || !onDismiss) return;
     const timer = setTimeout(() => {
       onDismiss();
-    }, 5000);
+    }, 3500);
     return () => clearTimeout(timer);
   }, [undoAction, onDismiss]);
 
@@ -25,22 +30,21 @@ export default function UndoToast({ undoAction, onUndo, onDismiss }: UndoToastPr
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.96 }}
-        transition={{ duration: 0.15 }}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white border border-[#E5E5E1] shadow-xl text-xs select-none"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0, transition: spring.snappy }}
+        exit={{ opacity: 0, y: 12, transition: { duration: 0.12 } }}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-2.5 rounded-[12px] bg-overlay border border-line shadow-[var(--shadow-pop)] text-[13px] select-none"
         role="status"
         aria-live="polite"
       >
-        <span className="text-[#16181D] font-medium">{undoAction.message}</span>
+        <span className="text-ink font-medium">{undoAction.message}</span>
         <button
           type="button"
           onClick={onUndo}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#4355B9] hover:bg-[#3848A3] text-white font-medium font-mono text-[11px] transition-colors shadow-2xs"
+          className="btn btn-primary btn-sm"
         >
           <RotateCcw className="w-3 h-3" />
-          <span>Undo (5s)</span>
+          <span>Undo</span>
         </button>
       </motion.div>
     </AnimatePresence>

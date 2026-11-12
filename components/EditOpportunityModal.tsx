@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { Opportunity } from '@/lib/types';
-import { X, Calendar, Globe, FileText, AlignLeft } from 'lucide-react';
+import { X } from 'lucide-react';
+import { DeadlinePicker } from '@/components/DeadlinePicker';
+import { parseValue, toValue } from '@/lib/deadline-picker-utils';
 
 interface EditOpportunityModalProps {
   isOpen: boolean;
@@ -11,16 +13,10 @@ interface EditOpportunityModalProps {
   onSave: (updated: Opportunity) => void;
 }
 
-function toLocalDatetimeInputString(isoDate: string | null): string {
-  if (!isoDate) return '';
-  try {
-    const d = new Date(isoDate);
-    if (isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  } catch {
-    return '';
-  }
+function toLocalPickerValue(isoDate: string | null): string | null {
+  if (!isoDate) return null;
+  const d = new Date(isoDate);
+  return Number.isNaN(d.getTime()) ? null : toValue(d);
 }
 
 interface FormProps {
@@ -32,21 +28,20 @@ interface FormProps {
 function EditOpportunityForm({ opportunity, onClose, onSave }: FormProps) {
   const [title, setTitle] = useState(opportunity.title);
   const [url, setUrl] = useState(opportunity.url || '');
-  const [deadline, setDeadline] = useState(() => toLocalDatetimeInputString(opportunity.deadline));
+  const [deadline, setDeadline] = useState<string | null>(() =>
+    toLocalPickerValue(opportunity.deadline)
+  );
   const [notes, setNotes] = useState(opportunity.notes || '');
-  const [applicationCopy, setApplicationCopy] = useState(opportunity.applicationCopy || '');
+  const [applicationCopy, setApplicationCopy] = useState(
+    opportunity.applicationCopy || ''
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    let deadlineIso = opportunity.deadline;
-    if (deadline) {
-      const parsed = new Date(deadline);
-      if (!isNaN(parsed.getTime())) {
-        deadlineIso = parsed.toISOString();
-      }
-    }
+    const parsedDeadline = parseValue(deadline);
+    const deadlineIso = parsedDeadline ? parsedDeadline.toISOString() : null;
 
     onSave({
       ...opportunity,
@@ -63,118 +58,112 @@ function EditOpportunityForm({ opportunity, onClose, onSave }: FormProps) {
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="w-full max-w-lg rounded-lg bg-white border border-[#E5E5E1] shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+      className="w-full max-w-[520px] rounded-[16px] bg-overlay border border-line shadow-[var(--shadow-modal)] flex flex-col max-h-[calc(100vh-64px)]"
       role="dialog"
       aria-modal="true"
-      aria-label="Edit Opportunity"
+      aria-label="Edit track"
     >
-      <div className="px-5 py-3.5 border-b border-[#E5E5E1] flex items-center justify-between bg-white shrink-0">
+      <div className="h-14 px-6 border-b border-line flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-[#4355B9] font-medium">
-            {opportunity.code}
-          </span>
-          <h2 className="text-sm font-semibold text-[#16181D]">
-            Edit Opportunity
-          </h2>
+          <span className="chip">{opportunity.code}</span>
+          <h2 className="text-[15px] font-semibold text-ink">Edit track</h2>
         </div>
         <button
           type="button"
+          aria-label="Close dialog"
           onClick={onClose}
-          className="text-[#6B7280] hover:text-[#16181D] p-1 rounded hover:bg-[#F5F5F3] transition-colors"
+          className="btn btn-ghost btn-icon"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto text-xs">
-        <div>
-          <label className="block text-[#16181D] font-medium mb-1">
-            Title *
-          </label>
-          <input
-            type="text"
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded-md px-3 py-2 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none text-xs"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           <div>
-            <label className="block text-[#16181D] font-medium mb-1 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-[#6B7280]" />
-              <span>Deadline (Local Time) *</span>
+            <label htmlFor="edit-track-title" className="block text-[12.5px] font-medium text-ink-2 mb-1.5">
+              Title <span className="text-ink-3">*</span>
             </label>
             <input
-              type="datetime-local"
+              id="edit-track-title"
+              type="text"
               required
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded-md px-2.5 py-1.5 text-[#16181D] font-mono text-xs focus:bg-white focus:border-[#4355B9] focus:outline-none"
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="input"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label htmlFor="edit-track-deadline" className="block text-[12.5px] font-medium text-ink-2 mb-1.5">
+                Deadline (local)
+              </label>
+              <DeadlinePicker
+                id="edit-track-deadline"
+                value={deadline}
+                onChange={setDeadline}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="edit-track-url" className="block text-[12.5px] font-medium text-ink-2 mb-1.5">
+                Source / Portal URL
+              </label>
+              <input
+                id="edit-track-url"
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://..."
+                className="input font-mono text-[13px]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="edit-track-copy" className="block text-[12.5px] font-medium text-ink-2 mb-1.5">
+              Application copy / pitch
+            </label>
+            <textarea
+              id="edit-track-copy"
+              rows={3}
+              value={applicationCopy}
+              onChange={(e) => setApplicationCopy(e.target.value)}
+              placeholder="30-second context blurb or technical submission pitch..."
+              className="input !h-auto py-2 leading-relaxed"
             />
           </div>
 
           <div>
-            <label className="block text-[#16181D] font-medium mb-1 flex items-center gap-1.5">
-              <Globe className="w-3.5 h-3.5 text-[#6B7280]" />
-              <span>Source / Portal URL</span>
+            <label htmlFor="edit-track-notes" className="block text-[12.5px] font-medium text-ink-2 mb-1.5">
+              Personal notes & next steps
             </label>
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded-md px-2.5 py-1.5 text-[#16181D] font-mono text-xs focus:bg-white focus:border-[#4355B9] focus:outline-none"
+            <textarea
+              id="edit-track-notes"
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Private requirements, eligibility caveats, reviewer notes..."
+              className="input !h-auto py-2 leading-relaxed"
             />
           </div>
         </div>
 
-        <div>
-          <label className="block text-[#16181D] font-medium mb-1 flex items-center gap-1.5">
-            <AlignLeft className="w-3.5 h-3.5 text-[#6B7280]" />
-            <span>Application Copy / Pitch</span>
-          </label>
-          <textarea
-            rows={3}
-            value={applicationCopy}
-            onChange={(e) => setApplicationCopy(e.target.value)}
-            placeholder="30-second context blurb or technical submission pitch..."
-            className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded-md px-3 py-2 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none text-xs leading-relaxed"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[#16181D] font-medium mb-1 flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5 text-[#6B7280]" />
-            <span>Personal Notes & Next Steps</span>
-          </label>
-          <textarea
-            rows={2}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Private requirements, eligibility caveats, reviewer notes..."
-            className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded-md px-3 py-2 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none text-xs leading-relaxed"
-          />
-        </div>
-
-        <div className="pt-2 flex items-center justify-between border-t border-[#E5E5E1]">
-          <span className="text-[11px] font-mono text-[#6B7280]">
-            Press Esc to cancel
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 rounded-md border border-[#E5E5E1] bg-white text-[#16181D] hover:bg-[#F5F5F3] transition-colors"
-            >
+        <div className="h-14 px-6 bg-raised border-t border-line flex items-center justify-between shrink-0 rounded-b-[16px]">
+          <span className="font-mono text-[11px] text-ink-3">Esc to cancel</span>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="btn btn-ghost">
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded-md bg-[#4355B9] hover:bg-[#3848A3] text-white font-medium transition-colors shadow-2xs"
+              disabled={!title.trim()}
+              className="btn btn-primary"
             >
-              Save Changes
+              <span>Save changes</span>
+              <span className="kbd">⌘↵</span>
             </button>
           </div>
         </div>
@@ -193,7 +182,7 @@ export default function EditOpportunityModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/24"
       onClick={onClose}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {

@@ -5,18 +5,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Opportunity, ArsenalProject } from '@/lib/types';
 import { NavSection } from './Sidebar';
 import {
-  Search,
-  Plus,
-  Sparkles,
-  ArrowRight,
-  Layers,
-  Radar,
-  FolderGit2,
-  SlidersHorizontal,
-  List,
-  Link2,
-  Edit2,
+  Search, Plus, Sparkles, ArrowRight, Layers, Radar,
+  FolderGit2, SlidersHorizontal, List, Link2, Pencil,
 } from 'lucide-react';
+import { dur, ease } from '@/lib/motion';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -44,18 +36,9 @@ interface CommandItem {
 }
 
 export default function CommandPalette({
-  isOpen,
-  onClose,
-  opportunities,
-  projects,
-  focusedOpportunity,
-  onSelectOpportunity,
-  onOpenAskAI,
-  onOpenEdit,
-  onAdvanceStatus,
-  onToggleProjectLink,
-  onOpenNewModal,
-  onSelectSection,
+  isOpen, onClose, opportunities, projects, focusedOpportunity,
+  onSelectOpportunity, onOpenAskAI, onOpenEdit, onAdvanceStatus,
+  onToggleProjectLink, onOpenNewModal, onSelectSection,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -79,7 +62,7 @@ export default function CommandPalette({
           label: `Edit: ${focusedOpportunity.title}`,
           sublabel: 'Title, URL, deadline, notes',
           shortcut: 'E',
-          icon: Edit2,
+          icon: Pencil,
           action: () => { if (onOpenEdit) onOpenEdit(focusedOpportunity); onClose(); },
         },
         {
@@ -117,73 +100,24 @@ export default function CommandPalette({
     }
 
     list.push(
-      {
-        id: 'cmd-new-opp',
-        category: 'Actions',
-        label: 'New track',
-        sublabel: 'Add hackathon, fellowship, or ambassador role',
-        shortcut: 'N',
-        icon: Plus,
-        action: () => { onClose(); onOpenNewModal(); },
-      },
-      {
-        id: 'nav-today',
-        category: 'Go to',
-        label: 'Today',
-        sublabel: '72h deadlines and digest',
-        shortcut: '1',
-        icon: List,
-        action: () => { onSelectSection('today'); onClose(); },
-      },
-      {
-        id: 'nav-pipeline',
-        category: 'Go to',
-        label: 'Pipeline',
-        sublabel: 'Active, waitlist, and submitted tracks',
-        shortcut: '2',
-        icon: Layers,
-        action: () => { onSelectSection('pipeline'); onClose(); },
-      },
-      {
-        id: 'nav-radar',
-        category: 'Go to',
-        label: 'Radar',
-        sublabel: 'Daily morning digest',
-        shortcut: '3',
-        icon: Radar,
-        action: () => { onSelectSection('radar'); onClose(); },
-      },
-      {
-        id: 'nav-arsenal',
-        category: 'Go to',
-        label: 'Arsenal',
-        sublabel: projects.map((p) => p.title).join(', ') || 'Projects',
-        shortcut: '4',
-        icon: FolderGit2,
-        action: () => { onSelectSection('arsenal'); onClose(); },
-      },
-      {
-        id: 'nav-settings',
-        category: 'Go to',
-        label: 'Settings',
-        sublabel: 'Account sync, BYOK key, JSON backups',
-        icon: SlidersHorizontal,
-        action: () => { onSelectSection('settings'); onClose(); },
-      }
+      { id: 'cmd-new-opp', category: 'Actions', label: 'New track', sublabel: 'Add hackathon, fellowship, or ambassador role', shortcut: 'N', icon: Plus, action: () => { onClose(); onOpenNewModal(); } },
+      { id: 'nav-today', category: 'Go to', label: 'Today', sublabel: '72h deadlines and digest', shortcut: '1', icon: List, action: () => { onSelectSection('today'); onClose(); } },
+      { id: 'nav-pipeline', category: 'Go to', label: 'Pipeline', sublabel: 'Active, waitlist, and submitted tracks', shortcut: '2', icon: Layers, action: () => { onSelectSection('pipeline'); onClose(); } },
+      { id: 'nav-radar', category: 'Go to', label: 'Radar', sublabel: 'Daily morning digest', shortcut: '3', icon: Radar, action: () => { onSelectSection('radar'); onClose(); } },
+      { id: 'nav-arsenal', category: 'Go to', label: 'Arsenal', sublabel: projects.map((p) => p.title).join(', ') || 'Projects', shortcut: '4', icon: FolderGit2, action: () => { onSelectSection('arsenal'); onClose(); } },
+      { id: 'nav-settings', category: 'Go to', label: 'Settings', sublabel: 'Account sync, BYOK key, JSON backups', icon: SlidersHorizontal, action: () => { onSelectSection('settings'); onClose(); } }
     );
 
-    opportunities
-      .filter((o) => o.status !== 'archived')
-      .forEach((opp) => {
-        list.push({
-          id: `jump-${opp.id}`,
-          category: 'Jump to track',
-          label: `${opp.code} · ${opp.title}`,
-          sublabel: `${opp.organization} · ${opp.status}`,
-          icon: List,
-          action: () => { onSelectSection('pipeline'); onSelectOpportunity(opp); onClose(); },
-        });
+    opportunities.filter((o) => o.status !== 'archived').forEach((opp) => {
+      list.push({
+        id: `jump-${opp.id}`,
+        category: 'Jump to track',
+        label: `${opp.code} · ${opp.title}`,
+        sublabel: `${opp.organization} · ${opp.status}`,
+        icon: List,
+        action: () => { onSelectSection('pipeline'); onSelectOpportunity(opp); onClose(); },
       });
+    });
 
     return list;
   }, [focusedOpportunity, opportunities, projects, onAdvanceStatus, onClose, onOpenAskAI, onOpenEdit, onOpenNewModal, onSelectOpportunity, onSelectSection, onToggleProjectLink]);
@@ -208,6 +142,7 @@ export default function CommandPalette({
       filtered[selectedIndex].action();
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
       onClose();
     }
   };
@@ -216,20 +151,19 @@ export default function CommandPalette({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] px-4 bg-black/20 select-none" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] px-4 bg-ink/24 select-none" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0, scale: 0.98, y: -4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: -4 }}
-          transition={{ duration: 0.12 }}
+          animate={{ opacity: 1, scale: 1, y: 0, transition: { duration: dur.fast, ease: ease.out } }}
+          exit={{ opacity: 0, scale: 0.98, y: -4, transition: { duration: 0.1 } }}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={handleKeyDown}
-          className="w-full max-w-[560px] rounded-[12px] bg-surface border border-line shadow-2xl overflow-hidden"
+          className="w-full max-w-[540px] rounded-[16px] bg-overlay border border-line shadow-[var(--shadow-modal)] overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Commands"
         >
-          <div className="flex items-center gap-2.5 px-4 h-11 border-b border-line bg-surface">
+          <div className="flex items-center gap-2.5 px-4 h-12 border-b border-line bg-overlay">
             <Search className="w-4 h-4 text-ink-3 shrink-0" />
             <input
               ref={inputRef}
@@ -237,14 +171,14 @@ export default function CommandPalette({
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
               placeholder="Type a command or search..."
-              className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink-3 focus:outline-none"
+              className="flex-1 bg-transparent text-[13.5px] text-ink placeholder:text-ink-4 focus:outline-none"
             />
-            <span className="font-mono text-[11px] text-ink-3">ESC</span>
+            <span className="kbd">Esc</span>
           </div>
 
-          <div className="max-h-80 overflow-y-auto p-1.5 divide-y divide-line">
+          <div className="max-h-80 overflow-y-auto p-1.5 space-y-0.5">
             {filtered.length === 0 ? (
-              <div className="py-8 text-center text-xs text-ink-3">No matching commands for &ldquo;{query}&rdquo;</div>
+              <div className="py-8 text-center text-[13px] text-ink-3">No matching commands for &ldquo;{query}&rdquo;</div>
             ) : (
               filtered.map((item, idx) => {
                 const Icon = item.icon;
@@ -255,27 +189,25 @@ export default function CommandPalette({
                     type="button"
                     onMouseEnter={() => setSelectedIndex(idx)}
                     onClick={item.action}
-                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-left transition-colors ${
-                      isSelected ? 'bg-hover text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink'
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-[8px] text-left transition-colors ${
+                      isSelected ? 'bg-pressed text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Icon className="w-4 h-4 shrink-0 text-ink-3" />
                       <div className="min-w-0">
                         <div className="text-[13px] font-medium truncate">{item.label}</div>
-                        {item.sublabel && <div className="text-xs text-ink-3 truncate">{item.sublabel}</div>}
+                        {item.sublabel && <div className="text-[12px] text-ink-3 truncate">{item.sublabel}</div>}
                       </div>
                     </div>
-                    {item.shortcut && (
-                      <span className="font-mono text-[11px] text-ink-3 shrink-0">{item.shortcut}</span>
-                    )}
+                    {item.shortcut && <span className="kbd">{item.shortcut}</span>}
                   </button>
                 );
               })
             )}
           </div>
 
-          <div className="px-4 py-2 bg-canvas-sunken border-t border-line flex items-center justify-between text-xs font-mono text-ink-3">
+          <div className="px-4 py-2 bg-raised border-t border-line flex items-center justify-between text-[11px] font-mono text-ink-3">
             <div className="flex items-center gap-3">
               <span>↑↓ Navigate</span>
               <span>↵ Run</span>

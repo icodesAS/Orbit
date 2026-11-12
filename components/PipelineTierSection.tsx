@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { ChevronRight, Plus } from 'lucide-react';
 import { Opportunity, ArsenalProject } from '@/lib/types';
 import OpportunityCard from './OpportunityCard';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { spring } from '@/lib/motion';
 
 interface PipelineTierSectionProps {
   title: string;
@@ -25,10 +27,42 @@ interface PipelineTierSectionProps {
   onToggleSubTask: (oppId: string, taskId: string) => void;
   onAddSubTask: (oppId: string, title: string) => void;
   onArchive: (id: string) => void;
+  onOpenNewModal?: () => void;
+}
+
+function TierGlyph({ badge }: { badge: string }) {
+  if (badge === 'TIER 1') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <circle cx="7" cy="7" r="5" fill="var(--ink)" />
+      </svg>
+    );
+  }
+  if (badge === 'TIER 2') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <circle cx="7" cy="7" r="5" stroke="var(--ink)" strokeWidth="1.4" />
+        <path d="M 7 2 A 5 5 0 0 1 7 12 Z" fill="var(--ink)" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <circle cx="7" cy="7" r="5" stroke="var(--ink)" strokeWidth="1.4" />
+      <path
+        d="M4.8 7.2L6.3 8.7L9.3 5.5"
+        stroke="var(--ink)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 export default function PipelineTierSection({
   title,
+  badge,
   opportunities,
   allProjects,
   focusedId,
@@ -46,41 +80,55 @@ export default function PipelineTierSection({
   onToggleSubTask,
   onAddSubTask,
   onArchive,
+  onOpenNewModal,
 }: PipelineTierSectionProps) {
   const [isSectionOpen, setIsSectionOpen] = useState(true);
 
   return (
-    <section className="space-y-1">
-      {/* Group label row with hairline - no outer box */}
-      <button
-        type="button"
-        onClick={() => setIsSectionOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between pb-1 border-b border-line text-left hover:opacity-85 transition-opacity"
-      >
-        <div className="flex items-center gap-1.5">
-          {isSectionOpen ? (
-            <ChevronDown className="w-3.5 h-3.5 text-ink-3" />
-          ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-ink-3" />
-          )}
-          <span className="text-xs font-medium text-ink-3">
-            {title}
+    <section className="space-y-0.5">
+      {/* Sticky collapsible tier header (36px) */}
+      <div className="group sticky top-0 z-10 h-9 px-2 bg-canvas/90 backdrop-blur-[6px] border-b border-line flex items-center justify-between">
+        <button
+          type="button"
+          aria-expanded={isSectionOpen}
+          onClick={() => setIsSectionOpen((prev) => !prev)}
+          className="flex items-center gap-2 text-left flex-1 h-full focus:outline-none"
+        >
+          <motion.span
+            animate={{ rotate: isSectionOpen ? 90 : 0 }}
+            transition={spring.snappy}
+            className="text-ink-3 flex items-center justify-center"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </motion.span>
+          <TierGlyph badge={badge} />
+          <span className="text-[13px] font-semibold text-ink">{title}</span>
+          <span className="font-mono text-[11.5px] text-ink-3 tabular-nums">
+            {opportunities.length}
           </span>
-        </div>
+        </button>
 
-        <span className="font-mono text-[11.5px] text-ink-3 tabular-nums">
-          {opportunities.length}
-        </span>
-      </button>
+        {onOpenNewModal && (
+          <button
+            type="button"
+            aria-label="New track (N)"
+            title="New track (N)"
+            onClick={onOpenNewModal}
+            className="btn btn-ghost btn-icon opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
 
       {isSectionOpen && (
         <div>
           {opportunities.length === 0 ? (
-            <div className="py-3 text-xs text-ink-3">
-              No opportunities in this tier.
+            <div className="h-10 px-6 flex items-center text-[13px] text-ink-3">
+              No tracks in this tier
             </div>
           ) : (
-            <div className="divide-y divide-line">
+            <div className="divide-y divide-line-faint">
               {opportunities.map((opp) => (
                 <OpportunityCard
                   key={opp.id}

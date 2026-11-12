@@ -74,12 +74,26 @@ export function useOrbitState() {
   }, [store]);
 
   const handleSignIn = useCallback(async () => {
-    setOpportunities([]);
-    setProjects([]);
-    setRadarDays([]);
-    setSelectedRadarDate('');
-    setUndoAction(null);
-    return auth.signIn();
+    try {
+      const u = await auth.signIn();
+      if (u) {
+        setOpportunities([]);
+        setProjects([]);
+        setRadarDays([]);
+        setSelectedRadarDate('');
+        setUndoAction(null);
+      }
+      return u;
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (
+        code !== 'auth/popup-closed-by-user' &&
+        code !== 'auth/cancelled-popup-request'
+      ) {
+        setErrorToast(err?.message || 'Google sign-in failed. Please try again.');
+      }
+      return null;
+    }
   }, [auth]);
 
   const handleSignOut = useCallback(async () => {
@@ -182,6 +196,19 @@ export function useOrbitState() {
     }
   }, [auth.user, store]);
 
+  const handleResetGuestData = useCallback(() => {
+    if (auth.user) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Reset guest data ignored while signed in.');
+      }
+      return;
+    }
+    store.clearLocalData();
+    setOpportunities([]);
+    setProjects([]);
+    setRadarDays([]);
+  }, [auth.user, store]);
+
   const handleExportJson = useCallback(() => {
     exportWorkspaceJson(opportunities, projectsWithCounts);
   }, [opportunities, projectsWithCounts]);
@@ -219,6 +246,6 @@ export function useOrbitState() {
     updateOpportunities, handleCreateOpportunity, handleUpdateOpportunity, handleAdvanceStatus,
     handleArchive, handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
     handlePromoteRadarItem, handleToggleVerifyRadarItem, handleAddProject, handleUpdateProject,
-    handleDeleteProject, handleImportLocalToAccount, handleClearLocalData, handleExportJson, handleImportJson,
+    handleDeleteProject, handleImportLocalToAccount, handleClearLocalData, handleResetGuestData, handleExportJson, handleImportJson,
   };
 }
