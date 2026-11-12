@@ -17,6 +17,11 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Orbit — Personal Opportunity Pipeline & Radar',
   description: 'Calm, keyboard-first opportunity pipeline and radar for builders.',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
   openGraph: {
     title: 'Orbit — Personal Opportunity Pipeline & Radar',
     description: 'Calm, keyboard-first opportunity pipeline and radar for builders.',

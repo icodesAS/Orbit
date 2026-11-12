@@ -97,16 +97,9 @@ export default function Sidebar({
           <div className="flex items-center gap-2 min-w-0 overflow-hidden">
             <OrbitGlyph size="sm" className="text-ink" />
             {!isCollapsed && (
-              <>
-                <span className="font-semibold text-[14px] tracking-[-0.01em] text-ink truncate">
-                  Orbit
-                </span>
-                <span
-                  className={`dot ${isSignedIn ? 'dot-ok' : ''} shrink-0`}
-                  title={isSignedIn ? 'Synced with cloud' : 'Saved in this browser only'}
-                  aria-label={isSignedIn ? 'Synced with cloud' : 'Saved in this browser only'}
-                />
-              </>
+              <span className="font-semibold text-[14px] tracking-[-0.01em] text-ink truncate">
+                Orbit
+              </span>
             )}
           </div>
 
