@@ -155,10 +155,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Too many linked projects (max 20)' }, { status: 400 });
     }
 
-    const modelName = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
-    if (!modelName) {
-      return NextResponse.json({ error: 'GEMINI_MODEL environment variable is not configured on the server.' }, { status: 500 });
-    }
+    const primaryModel = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL || 'gemini-3.5-flash';
     const opp = (opportunity || {}) as OpportunityInput;
     const projects = Array.isArray(linkedProjects) ? (linkedProjects as LinkedProjectInput[]) : [];
 
@@ -169,7 +166,7 @@ export async function POST(req: NextRequest) {
 
     const ai = new GoogleGenAI({
       apiKey,
-      httpOptions: { headers: { 'User-Agent': 'orbit-app' } },
+      httpOptions: { timeout: 12000, headers: { 'User-Agent': 'orbit-app' } },
     });
 
     const rawHistory: ChatMessageInput[] = Array.isArray(history)
@@ -187,20 +184,43 @@ export async function POST(req: NextRequest) {
       parts: [{ text: sanitizeField(msg.content, 4000) }],
     }));
 
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: [
-        ...conversationHistory,
-        { role: 'user', parts: [{ text: sanitizeField(prompt, 2000) }] },
-      ],
+    const contents = [
+      ...conversationHistory,
+      { role: 'user', parts: [{ text: sanitizeField(prompt, 2000) }] },
+    ];
+
+    const generatePayload = {
+      contents,
       config: {
         systemInstruction,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        tools: [{ googleSearch: {} }],
       },
-    });
+    };
 
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    let response: any = null;
+    try {
+      response = await ai.models.generateContent({
+        model: primaryModel,
+        ...generatePayload,
+      });
+    } catch (primaryErr: any) {
+      const pMsg = primaryErr?.message || String(primaryErr);
+      const isTransient = pMsg.includes('503') || pMsg.includes('high demand') ||
+        pMsg.includes('404') || pMsg.includes('not found') || pMsg.includes('UNAVAILABLE') ||
+        pMsg.includes('timeout') || pMsg.includes('timed out');
+
+      if (isTransient && primaryModel !== 'gemini-3.5-flash') {
+        console.warn(`[Gemini] ${primaryModel} failed (${pMsg}). Falling back to gemini-3.5-flash.`);
+        response = await ai.models.generateContent({
+          model: 'gemini-3.5-flash',
+          ...generatePayload,
+        });
+      } else {
+        throw primaryErr;
+      }
+    }
+
+    const chunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const sources = chunks
       .map((c: { web?: { title?: string; uri?: string } }) =>
         c.web?.uri ? { title: c.web.title || c.web.uri, uri: c.web.uri } : null
@@ -208,7 +228,7 @@ export async function POST(req: NextRequest) {
       .filter(Boolean);
 
     return NextResponse.json({
-      text: response.text || 'No response generated.',
+      text: response?.text || 'No response generated.',
       sources,
     });
   } catch (error: unknown) {
@@ -217,8 +237,14 @@ export async function POST(req: NextRequest) {
     if (msg.includes('API key') || msg.includes('API_KEY_INVALID')) {
       return NextResponse.json({ error: 'Invalid Gemini API key. Please check your key in Settings.' }, { status: 400 });
     }
+    if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429')) {
+      return NextResponse.json({ error: 'Gemini API quota exceeded for this key. Please check Google AI Studio.' }, { status: 429 });
+    }
+    if (msg.includes('503') || msg.includes('high demand') || msg.includes('UNAVAILABLE')) {
+      return NextResponse.json({ error: 'Gemini is currently experiencing high demand. Please retry in a moment.' }, { status: 503 });
+    }
     return NextResponse.json(
-      { error: 'Unable to generate response. Please try again later.' },
+      { error: msg || 'Unable to generate response. Please try again later.' },
       { status: 500 }
     );
   }
