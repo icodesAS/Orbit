@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Eye, EyeOff, X, ExternalLink } from 'lucide-react';
 import { DEFAULT_GEMINI_MODEL } from '@/lib/config';
 import CloudSyncSection from './CloudSyncSection';
+import { SocialLinks } from './SocialLinks';
 
 interface SettingsViewProps {
   userApiKey: string;
@@ -201,17 +202,15 @@ export default function SettingsView({
         </div>
 
         <div className="rounded-[12px] bg-raised border border-line divide-y divide-line-faint px-4 py-1 text-[13px]">
-          <div className="py-3 flex items-center justify-between gap-4">
-            <span className="text-ink-2">Creator</span>
-            <a
-              href="https://github.com/icodesAS"
-              target="_blank"
-              rel="noreferrer"
-              className="text-ink font-medium hover:underline inline-flex items-center gap-1 font-mono text-[12px]"
-            >
-              <span>@icodesAS</span>
-              <ExternalLink className="w-3 h-3 text-ink-3" />
-            </a>
+          <div className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-ink font-medium">Aman</span>
+                <span className="font-mono text-[12px] text-ink-3">(@icodesAS)</span>
+              </div>
+              <p className="text-[12px] text-ink-3 mt-0.5">Creator & Maintainer</p>
+            </div>
+            <SocialLinks />
           </div>
 
           <div className="py-3 flex items-center justify-between gap-4">
