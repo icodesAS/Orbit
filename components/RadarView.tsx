@@ -56,13 +56,13 @@ export default function RadarView({
   const handlePrevDate = () => {
     if (!onSelectDate || availableDates.length <= 1) return;
     const idx = availableDates.indexOf(currentDateStr);
-    if (idx > 0) onSelectDate(availableDates[idx - 1]);
+    if (idx >= 0 && idx < availableDates.length - 1) onSelectDate(availableDates[idx + 1]);
   };
 
   const handleNextDate = () => {
     if (!onSelectDate || availableDates.length <= 1) return;
     const idx = availableDates.indexOf(currentDateStr);
-    if (idx >= 0 && idx < availableDates.length - 1) onSelectDate(availableDates[idx + 1]);
+    if (idx > 0) onSelectDate(availableDates[idx - 1]);
   };
 
   const formattedDate = new Date(currentDateStr + 'T12:00:00').toLocaleDateString('en-US', {
@@ -83,7 +83,7 @@ export default function RadarView({
           <button
             type="button"
             onClick={handlePrevDate}
-            disabled={availableDates.indexOf(currentDateStr) <= 0}
+            disabled={availableDates.indexOf(currentDateStr) >= availableDates.length - 1}
             className="btn btn-ghost btn-icon"
             title="Previous digest"
             aria-label="Previous digest"
@@ -94,7 +94,7 @@ export default function RadarView({
           <button
             type="button"
             onClick={handleNextDate}
-            disabled={availableDates.indexOf(currentDateStr) >= availableDates.length - 1}
+            disabled={availableDates.indexOf(currentDateStr) <= 0}
             className="btn btn-ghost btn-icon"
             title="Next digest"
             aria-label="Next digest"

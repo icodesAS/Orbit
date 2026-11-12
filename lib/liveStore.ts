@@ -20,10 +20,13 @@ export function subscribeOpportunities(
 ): () => void {
   const db = getDb();
   const oppsCol = collection(db, 'users', userId, 'opportunities');
+  let cancelled = false;
+  let latestSeq = 0;
 
-  return onSnapshot(
+  const unsubscribe = onSnapshot(
     oppsCol,
     async (snapshot) => {
+      const currentSeq = ++latestSeq;
       try {
         const opps = await Promise.all(
           snapshot.docs.map(async (d) => {
@@ -37,19 +40,27 @@ export function subscribeOpportunities(
             tasks.sort((a, b) => a.sortOrder - b.sortOrder);
 
             const aiChat: AIChatMessage[] = aiChatSnap.docs.map((ad) => ad.data() as AIChatMessage);
-            aiChat.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            aiChat.sort((a, b) => (new Date(a.createdAt).getTime() || 0) - (new Date(b.createdAt).getTime() || 0));
 
             return { ...data, id: d.id, tasks, aiChat };
           })
         );
-        opps.sort((a, b) => a.sortOrder - b.sortOrder);
+        if (cancelled || currentSeq !== latestSeq) return;
+        opps.sort((a, b) => (a.sortOrder - b.sortOrder) || (new Date(b.createdAt).getTime() || 0) - (new Date(a.createdAt).getTime() || 0));
         onUpdate(opps);
       } catch (err) {
-        if (onError && err instanceof Error) onError(err);
+        if (!cancelled && onError && err instanceof Error) onError(err);
       }
     },
-    onError
+    (err) => {
+      if (!cancelled && onError) onError(err);
+    }
   );
+
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
 }
 
 export async function saveOpportunityToFirestore(
@@ -117,13 +128,21 @@ export function subscribeProjects(
   onError?: (err: Error) => void
 ): () => void {
   const db = getDb();
-  return onSnapshot(
+  let cancelled = false;
+  const unsubscribe = onSnapshot(
     collection(db, 'users', userId, 'projects'),
     (snapshot) => {
+      if (cancelled) return;
       onUpdate(snapshot.docs.map((d) => ({ ...d.data(), id: d.id } as ArsenalProject)));
     },
-    onError
+    (err) => {
+      if (!cancelled && onError) onError(err);
+    }
   );
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
 }
 
 export async function saveProjectToFirestore(userId: string, proj: ArsenalProject): Promise<void> {
@@ -142,9 +161,13 @@ export function subscribeRadarDays(
   onError?: (err: Error) => void
 ): () => void {
   const db = getDb();
-  return onSnapshot(
+  let cancelled = false;
+  let latestSeq = 0;
+
+  const unsubscribe = onSnapshot(
     collection(db, 'users', userId, 'radarDays'),
     async (snapshot) => {
+      const currentSeq = ++latestSeq;
       try {
         const days = await Promise.all(
           snapshot.docs.map(async (dayDoc) => {
@@ -154,13 +177,22 @@ export function subscribeRadarDays(
             return { ...dayData, date: dayDoc.id, items: items as RadarDay['items'] };
           })
         );
+        if (cancelled || currentSeq !== latestSeq) return;
+        days.sort((a, b) => b.date.localeCompare(a.date));
         onUpdate(days);
       } catch (err) {
-        if (onError && err instanceof Error) onError(err);
+        if (!cancelled && onError && err instanceof Error) onError(err);
       }
     },
-    onError
+    (err) => {
+      if (!cancelled && onError) onError(err);
+    }
   );
+
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
 }
 
 export async function updateRadarItemFlagsInFirestore(

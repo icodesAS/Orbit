@@ -88,9 +88,17 @@ export default function AskAIDrawer({
         headers,
         body: JSON.stringify({
           prompt: trimmed,
-          opportunity,
-          linkedProjects,
-          history: opportunity.aiChat,
+          opportunity: {
+            code: opportunity.code, title: opportunity.title, organization: opportunity.organization,
+            type: opportunity.type, status: opportunity.status, deadline: opportunity.deadline,
+            url: opportunity.url, applicationCopy: opportunity.applicationCopy, notes: opportunity.notes,
+            tasksDone: opportunity.tasksDone, tasksTotal: opportunity.tasksTotal,
+            tasks: opportunity.tasks.map((t) => ({ done: t.done, title: t.title })),
+          },
+          linkedProjects: linkedProjects.map((p) => ({
+            title: p.title, techStack: p.techStack, contextBlurb: p.contextBlurb,
+          })),
+          history: (opportunity.aiChat || []).slice(-8).map((m) => ({ role: m.role, content: m.content })),
         }),
       });
 
@@ -124,7 +132,9 @@ export default function AskAIDrawer({
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-[14px] font-semibold text-ink shrink-0">Ask AI</span>
               <span className="chip truncate max-w-[160px]" title={opportunity.title}>{opportunity.title}</span>
-              <span className="font-mono text-[11px] text-ink-3 hidden sm:inline shrink-0">{DEFAULT_GEMINI_MODEL}</span>
+              {DEFAULT_GEMINI_MODEL ? (
+                <span className="font-mono text-[11px] text-ink-3 hidden sm:inline shrink-0">{DEFAULT_GEMINI_MODEL}</span>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
@@ -225,11 +235,8 @@ export default function AskAIDrawer({
 
                 {previewState && (
                   <AskAIApplyPreview
-                    type={previewState.type}
-                    rawText={previewState.rawText}
-                    existingCopy={opportunity.applicationCopy}
-                    onApplyTasks={(tasks) => onApplyTasks?.(tasks)}
-                    onApplyCopy={(copy) => onApplyCopy?.(copy)}
+                    type={previewState.type} rawText={previewState.rawText} existingCopy={opportunity.applicationCopy}
+                    onApplyTasks={(tasks) => onApplyTasks?.(tasks)} onApplyCopy={(copy) => onApplyCopy?.(copy)}
                     onClose={() => setPreviewState(null)}
                   />
                 )}
@@ -257,11 +264,7 @@ export default function AskAIDrawer({
               </div>
 
               <form onSubmit={(e) => { e.preventDefault(); handleSubmit(input); }} className="p-3 border-t border-line bg-overlay shrink-0 space-y-2">
-                <AskAIActionChips
-                  onSelectChip={handleSubmit}
-                  disabled={isLoading}
-                  hasLinkedProjects={linkedProjects.length > 0}
-                />
+                <AskAIActionChips onSelectChip={handleSubmit} disabled={isLoading} hasLinkedProjects={linkedProjects.length > 0} />
                 <div className="relative rounded-[12px] border border-line-strong bg-overlay focus-within:border-accent/55 focus-within:ring-3 focus-within:ring-accent-ring transition-all">
                   <textarea
                     ref={textareaRef}

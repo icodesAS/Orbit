@@ -25,15 +25,16 @@ export function useOrbitDerived(
     return map;
   }, [projectsWithCounts]);
 
-  const availableRadarDates = useMemo(() => radarDays.map((d) => d.date), [radarDays]);
+  const sortedRadarDays = useMemo(() => [...radarDays].sort((a, b) => b.date.localeCompare(a.date)), [radarDays]);
+  const availableRadarDates = useMemo(() => sortedRadarDays.map((d) => d.date), [sortedRadarDays]);
 
   const activeDay = useMemo(() => {
-    if (!radarDays || radarDays.length === 0) return null;
+    if (!sortedRadarDays || sortedRadarDays.length === 0) return null;
     return (
-      (selectedRadarDate && radarDays.find((d) => d.date === selectedRadarDate)) ||
-      radarDays[0]
+      (selectedRadarDate && sortedRadarDays.find((d) => d.date === selectedRadarDate)) ||
+      sortedRadarDays[0]
     );
-  }, [radarDays, selectedRadarDate]);
+  }, [sortedRadarDays, selectedRadarDate]);
 
   const activeRadarItems: RadarItem[] = useMemo(() => {
     return activeDay && Array.isArray(activeDay.items) ? activeDay.items : [];

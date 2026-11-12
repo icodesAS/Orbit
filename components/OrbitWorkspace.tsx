@@ -87,6 +87,7 @@ export default function OrbitWorkspace() {
       const tag = target?.tagName?.toLowerCase();
       if (
         tag === 'input' || tag === 'textarea' || tag === 'select' ||
+        tag === 'button' || target?.closest('button') || target?.getAttribute('role') === 'button' ||
         target?.isContentEditable || target?.closest('[role="dialog"]') || target?.closest('[role="listbox"]')
       ) {
         return;
@@ -99,7 +100,7 @@ export default function OrbitWorkspace() {
         const navMap: Record<string, NavSection> = { '1': 'today', '2': 'pipeline', '3': 'radar', '4': 'arsenal' };
         setActiveSection(navMap[key]);
       } else if (key === '?') { e.preventDefault(); setIsShortcutsOpen(true); }
-      else if (focusedId) {
+      else if (activeSection === 'pipeline' && focusedId) {
         const visible = opportunities.filter((o) => o.status !== 'archived');
         const curr = visible.findIndex((o) => o.id === focusedId);
         if (key === 'j' || e.key === 'ArrowDown') {
@@ -122,7 +123,7 @@ export default function OrbitWorkspace() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedId, opportunities, handleAdvanceStatus]);
+  }, [focusedId, opportunities, handleAdvanceStatus, activeSection]);
 
   const activeOpps = opportunities.filter((o) => o.status === 'active');
   const waitlistOpps = opportunities.filter((o) => o.status === 'waitlist');
@@ -130,14 +131,15 @@ export default function OrbitWorkspace() {
   const focusedOpp = opportunities.find((o) => o.id === focusedId) || null;
 
   const handleAddAiMessage = (oppId: string, userText: string, assistantText: string, sources?: any[]) => {
+    const nowIso = new Date().toISOString();
     updateOpportunities((prev) => prev.map((o) => o.id === oppId ? {
       ...o,
       aiChat: [
         ...o.aiChat,
-        { id: `msg-${Date.now()}-u`, role: 'user' as const, content: userText, createdAt: 'just now' },
-        { id: `msg-${Date.now()}-a`, role: 'assistant' as const, content: assistantText, createdAt: 'just now', sources },
+        { id: `msg-${Date.now()}-u`, role: 'user' as const, content: userText, createdAt: nowIso },
+        { id: `msg-${Date.now()}-a`, role: 'assistant' as const, content: assistantText, createdAt: nowIso, sources },
       ],
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowIso,
     } : o));
   };
 
@@ -266,8 +268,7 @@ export default function OrbitWorkspace() {
                 userApiKey={userApiKey} onUpdateApiKey={setUserApiKey} isFirebaseReady={isFirebaseReady}
                 user={user} authLoading={authLoading} opportunitiesCount={opportunities.length} projectsCount={projects.length}
                 onSignIn={signIn} onSignOut={signOut} onImportLocalToAccount={handleImportLocalToAccount}
-                onClearLocalData={handleClearLocalData} onResetGuestData={handleResetGuestData}
-                onExportJson={handleExportJson} onImportJson={handleImportJson}
+                onClearLocalData={handleClearLocalData} onResetGuestData={handleResetGuestData} onExportJson={handleExportJson} onImportJson={handleImportJson}
               />
             )}
           </motion.div>
@@ -275,15 +276,9 @@ export default function OrbitWorkspace() {
 
         <MobileNavBar activeSection={activeSection} onSelectSection={setActiveSection} counts={counts} />
         <AskAIDrawer
-          opportunity={selectedAiOpp}
-          allProjects={projects}
-          userApiKey={userApiKey}
-          firebaseUser={user}
-          canUseAi={canUseAi}
-          onSignIn={signIn}
-          onClose={() => setSelectedAiOppId(null)}
-          onSendMessage={handleAddAiMessage}
-          onClearHistory={handleClearAiHistory}
+          opportunity={selectedAiOpp} allProjects={projects} userApiKey={userApiKey}
+          firebaseUser={user} canUseAi={canUseAi} onSignIn={signIn} onClose={() => setSelectedAiOppId(null)}
+          onSendMessage={handleAddAiMessage} onClearHistory={handleClearAiHistory}
           onApplyTasks={(tasks) => selectedAiOpp && handleAddMultipleSubTasks(selectedAiOpp.id, tasks)}
           onApplyCopy={(copy) => selectedAiOpp && handleUpdateApplicationCopy(selectedAiOpp.id, copy)}
         />

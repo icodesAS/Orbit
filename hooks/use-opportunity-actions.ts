@@ -124,7 +124,9 @@ export function useOpportunityActions({
     updateOpportunities((prev) =>
       prev.map((o) => {
         if (o.id !== oppId) return o;
-        const tasks = [...o.tasks, ...newTasks];
+        const baseOrder = o.tasks.length > 0 ? Math.max(...o.tasks.map((t) => t.sortOrder || 0)) : 0;
+        const keyedTasks = newTasks.map((t, idx) => ({ ...t, sortOrder: baseOrder + idx + 1 }));
+        const tasks = [...o.tasks, ...keyedTasks];
         const done = tasks.filter((t) => t.done).length;
         const total = tasks.length;
         return {

@@ -68,14 +68,14 @@ export default function NewOpportunityModal({
       tasksTotal: initialTask.trim() ? 1 : 0,
       projectIds: selectedProjectIds,
       url: trimmedUrl || null,
-      urlHash: computeUrlHash(trimmedUrl || `https://orbit.local/${Date.now()}`),
+      urlHash: trimmedUrl ? computeUrlHash(trimmedUrl) : '',
       applicationCopy: applicationCopy.trim() || null,
       notes: null,
       sourceRadarDate: null,
       sortOrder: 0,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-      lastActivityAt: 'just now',
+      lastActivityAt: now.toISOString(),
       tasks: initialTask.trim()
         ? [
             {

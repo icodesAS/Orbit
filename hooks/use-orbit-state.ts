@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Opportunity, ArsenalProject, RadarDay, UndoAction } from '@/lib/types';
 import { getOrbitStore } from '@/lib/store';
 import { exportWorkspaceJson, parseWorkspaceJson } from '@/lib/backup';
@@ -28,6 +28,11 @@ export function useOrbitState() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>(() => initialLocal.opportunities);
   const [projects, setProjects] = useState<ArsenalProject[]>(() => initialLocal.projects);
   const [radarDays, setRadarDays] = useState<RadarDay[]>(() => initialLocal.radarDays);
+
+  const oppsRef = useRef(opportunities);
+  useEffect(() => {
+    oppsRef.current = opportunities;
+  }, [opportunities]);
   const [syncedUid, setSyncedUid] = useState<string | null>(null);
   const [userApiKey, setUserApiKey] = useState('');
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
@@ -115,33 +120,32 @@ export function useOrbitState() {
   }, [auth]);
 
   const updateOpportunities = useCallback((updater: (prev: Opportunity[]) => Opportunity[]) => {
-    setOpportunities((prevSnapshot) => {
-      const next = updater(prevSnapshot);
-      if (auth.user) {
-        const uid = auth.user.uid;
-        const changed = next.filter((opp) => {
-          const prevOpp = prevSnapshot.find((p) => p.id === opp.id);
-          return prevOpp !== opp;
+    const prevSnapshot = oppsRef.current;
+    const next = updater(prevSnapshot);
+    setOpportunities(next);
+
+    if (auth.user) {
+      const uid = auth.user.uid;
+      const changed = next.filter((opp) => {
+        const prevOpp = prevSnapshot.find((p) => p.id === opp.id);
+        return prevOpp !== opp;
+      });
+      if (changed.length > 0) {
+        Promise.all(
+          changed.map((opp) => {
+            const prevOpp = prevSnapshot.find((p) => p.id === opp.id);
+            return saveOpportunityToFirestore(uid, opp, {
+              syncTasks: !prevOpp || prevOpp.tasks !== opp.tasks,
+              syncChat: !prevOpp || prevOpp.aiChat !== opp.aiChat,
+            });
+          })
+        ).catch((err) => {
+          setErrorToast(`Sync error: ${err.message}`);
         });
-        if (changed.length > 0) {
-          Promise.all(
-            changed.map((opp) => {
-              const prevOpp = prevSnapshot.find((p) => p.id === opp.id);
-              return saveOpportunityToFirestore(uid, opp, {
-                syncTasks: !prevOpp || prevOpp.tasks !== opp.tasks,
-                syncChat: !prevOpp || prevOpp.aiChat !== opp.aiChat,
-              });
-            })
-          ).catch((err) => {
-            setOpportunities(prevSnapshot);
-            setErrorToast(`Sync error. Changes reverted: ${err.message}`);
-          });
-        }
-      } else {
-        store.saveOpportunities(next);
       }
-      return next;
-    });
+    } else {
+      store.saveOpportunities(next);
+    }
   }, [auth.user, store]);
 
   const {
@@ -156,21 +160,19 @@ export function useOrbitState() {
   } = useOpportunityActions({ opportunities, updateOpportunities, setUndoAction });
 
   const handleCreateOpportunity = useCallback((newOpp: Opportunity) => {
-    setOpportunities((prevSnapshot) => {
-      const next = [newOpp, ...prevSnapshot];
-      if (auth.user) {
-        saveOpportunityToFirestore(auth.user.uid, newOpp, {
-          syncTasks: newOpp.tasks.length > 0,
-          syncChat: false,
-        }).catch((err) => {
-          setOpportunities(prevSnapshot);
-          setErrorToast(`Failed to save opportunity: ${err.message}`);
-        });
-      } else {
-        store.saveOpportunities(next);
-      }
-      return next;
-    });
+    const prevSnapshot = oppsRef.current;
+    const next = [newOpp, ...prevSnapshot];
+    setOpportunities(next);
+    if (auth.user) {
+      saveOpportunityToFirestore(auth.user.uid, newOpp, {
+        syncTasks: newOpp.tasks.length > 0,
+        syncChat: false,
+      }).catch((err) => {
+        setErrorToast(`Failed to save opportunity: ${err.message}`);
+      });
+    } else {
+      store.saveOpportunities(next);
+    }
   }, [auth.user, store]);
 
   const handleUpdateOpportunity = useCallback((updated: Opportunity) => {
@@ -180,16 +182,15 @@ export function useOrbitState() {
   }, [updateOpportunities]);
 
   const handleDeleteOpportunity = useCallback((id: string) => {
-    const target = opportunities.find((o) => o.id === id);
+    const prevSnapshot = oppsRef.current;
+    const target = prevSnapshot.find((o) => o.id === id);
     if (!target) return;
-    const prevSnapshot = opportunities;
-    const next = opportunities.filter((o) => o.id !== id);
+    const next = prevSnapshot.filter((o) => o.id !== id);
     setOpportunities(next);
 
     if (auth.user) {
       const uid = auth.user.uid;
       deleteOpportunityFromFirestore(uid, id).catch((err) => {
-        setOpportunities(prevSnapshot);
         setErrorToast(`Failed to delete track: ${err.message}`);
       });
     } else {
@@ -201,17 +202,18 @@ export function useOrbitState() {
       message: `Deleted ${target.code}`,
       timestamp: Date.now(),
       restore: () => {
-        setOpportunities((curr) => [target, ...curr]);
+        const restored = [target, ...oppsRef.current];
+        setOpportunities(restored);
         if (auth.user) {
           saveOpportunityToFirestore(auth.user.uid, target).catch((err) => {
             setErrorToast(`Failed to restore track: ${err.message}`);
           });
         } else {
-          store.saveOpportunities([target, ...next]);
+          store.saveOpportunities(restored);
         }
       },
     });
-  }, [auth.user, opportunities, store]);
+  }, [auth.user, store]);
 
   const {
     handlePromoteRadarItem,

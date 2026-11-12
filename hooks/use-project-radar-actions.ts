@@ -51,6 +51,7 @@ export function useProjectRadarActions({
           ? [item.recommendedProjectId]
           : [];
       const now = new Date().toISOString();
+      const minSort = opportunities.length > 0 ? Math.min(...opportunities.map((o) => o.sortOrder ?? 0)) : 0;
       const newOpp: Opportunity = {
         id: generateId('opp'),
         code: `ORB-${String(nextCodeNumber).padStart(2, '0')}`,
@@ -64,14 +65,14 @@ export function useProjectRadarActions({
         tasksTotal: 1,
         projectIds,
         url: item.url,
-        urlHash: item.urlHash,
+        urlHash: item.urlHash || '',
         applicationCopy: item.summary,
         notes: `Promoted from Radar (${activeDate})`,
         sourceRadarDate: activeDate,
-        sortOrder: 0,
+        sortOrder: minSort - 1,
         createdAt: now,
         updatedAt: now,
-        lastActivityAt: 'just now',
+        lastActivityAt: now,
         tasks: [
           {
             id: generateId('task'),
@@ -89,46 +90,39 @@ export function useProjectRadarActions({
           ...day,
           items: day.items.map((i: RadarItem) => (i.id === item.id ? { ...i, promoted: true } : i)),
         }));
-        if (user) {
-          updateRadarItemFlagsInFirestore(user.uid, activeDate, item.id, { promoted: true }).catch((err) => {
-            setRadarDays(prevDays);
-            setErrorToast(`Failed to update radar item flag: ${err.message}`);
-          });
-        } else {
-          store.saveRadarDays(nextDays);
-        }
+        if (!user) store.saveRadarDays(nextDays);
         return nextDays;
       });
+      if (user) {
+        updateRadarItemFlagsInFirestore(user.uid, activeDate, item.id, { promoted: true }).catch((err) => {
+          setErrorToast(`Failed to update radar item flag: ${err.message}`);
+        });
+      }
       return newOpp.id;
     },
-    [activeDay, handleCreateOpportunity, nextCodeNumber, setErrorToast, setRadarDays, store, user]
+    [activeDay, handleCreateOpportunity, nextCodeNumber, opportunities, setErrorToast, setRadarDays, store, user]
   );
 
   const handleToggleVerifyRadarItem = useCallback(
     (itemId: string) => {
       const activeDate = activeDay?.date || new Date().toISOString().split('T')[0];
+      const targetItem = activeDay?.items.find((i) => i.id === itemId);
+      const newVerifiedVal = targetItem ? !targetItem.verified : true;
+
       setRadarDays((prevDays) => {
-        let newVerifiedVal = true;
         const nextDays = prevDays.map((day) => ({
           ...day,
-          items: day.items.map((i: RadarItem) => {
-            if (i.id === itemId) {
-              newVerifiedVal = !i.verified;
-              return { ...i, verified: newVerifiedVal };
-            }
-            return i;
-          }),
+          items: day.items.map((i: RadarItem) => (i.id === itemId ? { ...i, verified: newVerifiedVal } : i)),
         }));
-        if (user) {
-          updateRadarItemFlagsInFirestore(user.uid, activeDate, itemId, { verified: newVerifiedVal }).catch((err) => {
-            setRadarDays(prevDays);
-            setErrorToast(`Failed to update verification: ${err.message}`);
-          });
-        } else {
-          store.saveRadarDays(nextDays);
-        }
+        if (!user) store.saveRadarDays(nextDays);
         return nextDays;
       });
+
+      if (user) {
+        updateRadarItemFlagsInFirestore(user.uid, activeDate, itemId, { verified: newVerifiedVal }).catch((err) => {
+          setErrorToast(`Failed to update verification: ${err.message}`);
+        });
+      }
     },
     [activeDay, setErrorToast, setRadarDays, store, user]
   );
@@ -137,16 +131,14 @@ export function useProjectRadarActions({
     (newProj: ArsenalProject) => {
       setProjects((prev) => {
         const next = [newProj, ...prev];
-        if (user) {
-          saveProjectToFirestore(user.uid, newProj).catch((err) => {
-            setProjects(prev);
-            setErrorToast(`Failed to save project: ${err.message}`);
-          });
-        } else {
-          store.saveProjects(next);
-        }
+        if (!user) store.saveProjects(next);
         return next;
       });
+      if (user) {
+        saveProjectToFirestore(user.uid, newProj).catch((err) => {
+          setErrorToast(`Failed to save project: ${err.message}`);
+        });
+      }
     },
     [setErrorToast, setProjects, store, user]
   );
@@ -155,16 +147,14 @@ export function useProjectRadarActions({
     (updated: ArsenalProject) => {
       setProjects((prev) => {
         const next = prev.map((p) => (p.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : p));
-        if (user) {
-          saveProjectToFirestore(user.uid, updated).catch((err) => {
-            setProjects(prev);
-            setErrorToast(`Failed to update project: ${err.message}`);
-          });
-        } else {
-          store.saveProjects(next);
-        }
+        if (!user) store.saveProjects(next);
         return next;
       });
+      if (user) {
+        saveProjectToFirestore(user.uid, updated).catch((err) => {
+          setErrorToast(`Failed to update project: ${err.message}`);
+        });
+      }
     },
     [setErrorToast, setProjects, store, user]
   );

@@ -21,6 +21,12 @@ export function toValue(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
+export function toLocalPickerValue(isoDate: string | null | undefined): string | null {
+  if (!isoDate) return null;
+  const d = new Date(isoDate);
+  return Number.isNaN(d.getTime()) ? null : toValue(d);
+}
+
 export function applyDay(
   prev: Date | null,
   day: Date,

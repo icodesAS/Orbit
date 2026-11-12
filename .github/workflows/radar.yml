@@ -2,7 +2,7 @@ name: Morning Radar Job
 
 on:
   schedule:
-    # 03:30 UTC daily (approx 9:00 AM IST)
+    # 03:30 UTC daily
     - cron: '30 3 * * *'
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
 
@@ -35,6 +35,6 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          TARGET_USER_ID: ${{ secrets.TARGET_USER_ID || secrets.FIREBASE_UID }}
-          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-3.8-flash' }}
+          TARGET_USER_ID: ${{ secrets.TARGET_USER_ID }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
         run: npm run radar

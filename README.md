@@ -225,7 +225,7 @@ Copy `.env.example` to `.env.local` and fill in the following:
 | **Server Variables** |
 | `FIREBASE_SERVICE_ACCOUNT` | Yes (for Radar) | Firebase Admin Service Account Private Key (entire JSON) | Firebase Console → Project Settings → Service accounts → Generate new private key |
 | `GEMINI_API_KEY` | Yes (for Ask AI & Radar) | Google Gemini API Key | [Google AI Studio](https://aistudio.google.com/app/apikey) |
-| `GEMINI_MODEL` | No | Gemini Model Name (default: `gemini-3.8-flash`) | Optional override |
+| `GEMINI_MODEL` | Yes | Gemini Model Name (e.g. `gemini-2.5-flash`) | Required for Ask AI & Radar |
 | `OWNER_UID` | No | Your Firebase User UID | Firebase Console → Authentication → Users |
 | `ALLOW_SERVER_KEY` | No | Allow server key fallback for owner (default: `false`) | Set to `true` to enable |
 
@@ -270,7 +270,7 @@ Add the following secrets under **Settings → Secrets and variables → Actions
 | `GEMINI_API_KEY` | Google Gemini API Key | [Google AI Studio](https://aistudio.google.com/app/apikey) |
 | `FIREBASE_SERVICE_ACCOUNT` | Firebase Admin Service Account Private Key (entire raw JSON) | Firebase Console → Project Settings → Service accounts → Generate new private key |
 | `TARGET_USER_ID` | Your Firebase User UID | Firebase Console → Authentication → Users tab |
-| `GEMINI_MODEL` | *(optional)* Gemini Model Name | Defaults to `gemini-3.8-flash` |
+| `GEMINI_MODEL` | Gemini Model Name | e.g. `gemini-2.5-flash` |
 
 **Important:** GitHub automatically disables scheduled workflows on forks until you manually enable them in the **Actions** tab. GitHub also disables scheduled workflows after 60 days of repository inactivity.
 

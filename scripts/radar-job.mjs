@@ -8,106 +8,31 @@ if (fs.existsSync('.env.local')) {
 }
 dotenv.config();
 
-import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import {
   RADAR_TIERS,
   buildRadarDiscoveryPrompt,
   buildRadarMatchingPrompt,
-} from './radar-prompts.mjs';
-
-async function isUrlAlive(rawUrl) {
-  try {
-    const res = await fetch(rawUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      signal: AbortSignal.timeout(4000),
-      redirect: 'follow',
-    });
-    if ([404, 410, 500, 502, 503].includes(res.status)) return false;
-    return true;
-  } catch {
-    // If timeout or network glitch, do not aggressively drop
-    return true;
-  }
-}
-
-function hashUrl(rawUrl) {
-  if (!rawUrl || typeof rawUrl !== 'string') return '';
-  const trimmed = rawUrl.trim();
-  if (!trimmed) return '';
-  try {
-    const url = new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`);
-    url.hostname = url.hostname.toLowerCase();
-    url.protocol = url.protocol.toLowerCase();
-    const params = new URLSearchParams(url.search);
-    for (const key of Array.from(params.keys())) {
-      const k = key.toLowerCase();
-      if (k.startsWith('utm_') || ['ref', 'ref_src', 'fbclid', 'gclid', 'mc_cid', 'mc_eid', '_hsenc', '_hsmi'].includes(k)) {
-        params.delete(key);
-      }
-    }
-    params.sort();
-    url.search = params.toString();
-    if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
-      url.pathname = url.pathname.slice(0, -1);
-    }
-    url.hash = '';
-    return crypto.createHash('sha256').update(url.toString()).digest('hex');
-  } catch {
-    return crypto.createHash('sha256').update(trimmed.toLowerCase().replace(/\/+$/, '')).digest('hex');
-  }
-}
-
-function parseJsonArray(text) {
-  if (!text) return [];
-  try {
-    const cleaned = text.trim();
-    const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    const rawJson = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : cleaned;
-    const parsed = JSON.parse(rawJson);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (err) {
-    console.warn('  ⚠️ Failed to parse JSON block from Gemini output:', err.message);
-    return [];
-  }
-}
-
-function initFirebaseAdmin() {
-  if (getApps().length > 0) return getApps()[0];
-
-  let credential;
-  // Only use environment variable for security - never read from local file
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    let sa = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
-    while (typeof sa === 'string') {
-      try {
-        sa = JSON.parse(sa);
-      } catch {
-        break;
-      }
-    }
-    credential = cert(sa);
-  } else {
-    throw new Error('Missing FIREBASE_SERVICE_ACCOUNT secret or service-account.json file.');
-  }
-
-  return initializeApp({ credential });
-}
+} from '../prompts/index.mjs';
+import {
+  isUrlAlive,
+  hashUrl,
+  parseJsonArray,
+  initFirebaseAdmin,
+} from './radar-helpers.mjs';
 
 async function runRadarJob() {
   console.log('🚀 Orbit Morning Radar Job starting...');
 
   const apiKey = process.env.GEMINI_API_KEY?.trim();
-  const userId = (process.env.TARGET_USER_ID || process.env.FIREBASE_UID)?.trim();
-  const modelName = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+  const userId = process.env.TARGET_USER_ID?.trim();
+  const modelName = process.env.GEMINI_MODEL?.trim();
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL?.trim();
 
   if (!apiKey) throw new Error('GEMINI_API_KEY environment variable is required.');
-  if (!userId) throw new Error('TARGET_USER_ID (or FIREBASE_UID) environment variable is required.');
+  if (!userId) throw new Error('TARGET_USER_ID environment variable is required.');
+  if (!modelName) throw new Error('GEMINI_MODEL environment variable is required.');
 
   initFirebaseAdmin();
   const db = getFirestore();
@@ -144,6 +69,7 @@ async function runRadarJob() {
   });
 
   const allCollectedItems = [];
+  let failedTiersCount = 0;
 
   // 4. Execute 4 separate search-grounded Gemini queries
   for (let i = 0; i < RADAR_TIERS.length; i++) {
@@ -164,7 +90,6 @@ async function runRadarJob() {
         attempts++;
         try {
           try {
-            // Attempt search-grounded generation with high thinking first
             response = await ai.models.generateContent({
               model: activeModel,
               contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -179,9 +104,7 @@ async function runRadarJob() {
               response = await ai.models.generateContent({
                 model: activeModel,
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                config: {
-                  thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-                },
+                config: { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } },
               });
             } else {
               throw searchErr;
@@ -189,9 +112,9 @@ async function runRadarJob() {
           }
           break;
         } catch (genErr) {
-          if (genErr.message?.includes('RESOURCE_EXHAUSTED') && activeModel !== 'gemini-3.5-flash') {
-            console.log(`   ⚠️ Quota reached for ${activeModel}; falling back to gemini-3.5-flash (HIGH reasoning)...`);
-            activeModel = 'gemini-3.5-flash';
+          if (genErr.message?.includes('RESOURCE_EXHAUSTED') && fallbackModel && activeModel !== fallbackModel) {
+            console.log(`   ⚠️ Quota reached for ${activeModel}; falling back to ${fallbackModel}...`);
+            activeModel = fallbackModel;
           } else if (attempts < 2 && (genErr.message?.includes('503') || genErr.message?.includes('429'))) {
             console.log(`   ⏳ Gemini busy (${genErr.message.slice(0, 45)}...), retrying in 4s...`);
             await new Promise((r) => setTimeout(r, 4000));
@@ -201,7 +124,7 @@ async function runRadarJob() {
         }
       }
 
-      const parsedItems = parseJsonArray(response.text);
+      const parsedItems = parseJsonArray(response?.text);
       console.log(`   Retrieved ${parsedItems.length} candidate items from Gemini.`);
 
       let sectionCount = 0;
@@ -216,24 +139,20 @@ async function runRadarJob() {
           continue;
         }
 
-        // 1. Validate deadline & drop past deadlines
         let validDeadline = null;
         if (raw.deadline) {
           const d = new Date(String(raw.deadline).trim());
           if (!isNaN(d.getTime())) {
-            // Drop expired deadlines (older than 24 hours ago)
             if (d.getTime() < Date.now() - 86400000) {
               console.log(`   ↳ Skipping expired deadline (${raw.deadline}): "${raw.title}"`);
               continue;
             }
-            // Only set confirmed deadline if confidence is stated
             if (raw.deadlineConfidence === 'stated') {
               validDeadline = d.toISOString();
             }
           }
         }
 
-        // 2. Validate URL liveness (drop dead 404 / 500 links)
         const isAlive = await isUrlAlive(cleanUrl);
         if (!isAlive) {
           console.log(`   ↳ Dropping dead URL (${cleanUrl}): "${raw.title}"`);
@@ -273,8 +192,14 @@ async function runRadarJob() {
       }
       console.log(`   ✅ Accepted ${sectionCount} verified items for Priority ${tier.priority}.`);
     } catch (err) {
+      failedTiersCount++;
       console.error(`   ❌ Error querying section ${tier.priority}:`, err.message);
     }
+  }
+
+  if (failedTiersCount === RADAR_TIERS.length && allCollectedItems.length === 0) {
+    console.error('\n💥 All priority tiers failed to produce items. Aborting without modifying Firestore.');
+    process.exit(1);
   }
 
   // Pass 2: Lightweight Arsenal Project Matching (Non-grounded)
@@ -327,13 +252,6 @@ async function runRadarJob() {
 
   // 5. Write to Firestore with Admin SDK
   console.log(`\n💾 Writing ${allCollectedItems.length} total items to Firestore...`);
-  const rootRef = db.doc(`users/${userId}/radarDays/${todayDate}`);
-  await rootRef.set({
-    date: todayDate,
-    generatedAt: FieldValue.serverTimestamp(),
-    model: modelName,
-    itemCount: allCollectedItems.length,
-  }, { merge: true });
 
   const batch = db.batch();
   for (const item of allCollectedItems) {
@@ -341,6 +259,14 @@ async function runRadarJob() {
     batch.set(itemRef, item, { merge: true });
   }
   await batch.commit();
+
+  const rootRef = db.doc(`users/${userId}/radarDays/${todayDate}`);
+  await rootRef.set({
+    date: todayDate,
+    generatedAt: FieldValue.serverTimestamp(),
+    model: modelName,
+    itemCount: allCollectedItems.length,
+  }, { merge: true });
 
   console.log(`🎉 Morning Radar Job completed successfully! ${allCollectedItems.length} items published.`);
 }

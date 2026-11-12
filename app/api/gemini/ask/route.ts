@@ -35,6 +35,12 @@ const requestLog = new Map<string, number[]>();
 
 function isRateLimited(clientKey: string): boolean {
   const now = Date.now();
+  for (const [k, timestamps] of requestLog.entries()) {
+    const valid = timestamps.filter((t) => now - t < RATE_WINDOW_MS);
+    if (valid.length === 0) requestLog.delete(k);
+    else requestLog.set(k, valid);
+  }
+
   const timestamps = (requestLog.get(clientKey) || []).filter((t) => now - t < RATE_WINDOW_MS);
   if (timestamps.length >= MAX_REQ_PER_WINDOW) {
     requestLog.set(clientKey, timestamps);
@@ -68,9 +74,20 @@ async function verifyFirebaseIdToken(idToken: string, apiKey: string): Promise<s
 
 export async function POST(req: NextRequest) {
   try {
-    const contentLength = req.headers.get('content-length');
-    if (contentLength && parseInt(contentLength, 10) > 100 * 1024) {
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+    if (isRateLimited(`ip:${clientIp}`)) {
+      return NextResponse.json({ error: 'Too many requests. Please wait a minute.' }, { status: 429 });
+    }
+
+    const rawBody = await req.text();
+    if (rawBody.length > 100 * 1024) {
       return NextResponse.json({ error: 'Request too large' }, { status: 413 });
+    }
+    let body: any;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
     const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
@@ -92,12 +109,9 @@ export async function POST(req: NextRequest) {
       if (!verifiedUid) {
         return NextResponse.json({ error: 'Invalid or expired authentication token' }, { status: 401 });
       }
-    }
-
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
-    const rateKey = verifiedUid || clientIp;
-    if (isRateLimited(rateKey)) {
-      return NextResponse.json({ error: 'Too many requests. Please wait a minute.' }, { status: 429 });
+      if (isRateLimited(`uid:${verifiedUid}`)) {
+        return NextResponse.json({ error: 'Too many requests. Please wait a minute.' }, { status: 429 });
+      }
     }
 
     // 2. Key resolution:
@@ -126,8 +140,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Add your Gemini key in Settings.' }, { status: 400 });
     }
 
-    const body = await req.json();
-    const { prompt, opportunity, linkedProjects, history } = body;
+    const { prompt, opportunity, linkedProjects, history } = body || {};
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -143,6 +156,9 @@ export async function POST(req: NextRequest) {
     }
 
     const modelName = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+    if (!modelName) {
+      return NextResponse.json({ error: 'GEMINI_MODEL environment variable is not configured on the server.' }, { status: 500 });
+    }
     const opp = (opportunity || {}) as OpportunityInput;
     const projects = Array.isArray(linkedProjects) ? (linkedProjects as LinkedProjectInput[]) : [];
 
@@ -156,7 +172,14 @@ export async function POST(req: NextRequest) {
       httpOptions: { headers: { 'User-Agent': 'orbit-app' } },
     });
 
-    const rawHistory = Array.isArray(history) ? (history as ChatMessageInput[]) : [];
+    const rawHistory: ChatMessageInput[] = Array.isArray(history)
+      ? history
+          .filter((m: any) => m && typeof m === 'object' && typeof m.content === 'string')
+          .map((m: any) => ({
+            role: String(m.role || 'user'),
+            content: String(m.content),
+          }))
+      : [];
     const firstUserIndex = rawHistory.findIndex((m) => m.role === 'user');
     const trimmedHistory = firstUserIndex >= 0 ? rawHistory.slice(firstUserIndex) : [];
     const conversationHistory = trimmedHistory.slice(-8).map((msg) => ({
@@ -189,7 +212,11 @@ export async function POST(req: NextRequest) {
       sources,
     });
   } catch (error: unknown) {
-    console.error('[Gemini API Error]', error instanceof Error ? error.message : error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('[Gemini API Error]', msg);
+    if (msg.includes('API key') || msg.includes('API_KEY_INVALID')) {
+      return NextResponse.json({ error: 'Invalid Gemini API key. Please check your key in Settings.' }, { status: 400 });
+    }
     return NextResponse.json(
       { error: 'Unable to generate response. Please try again later.' },
       { status: 500 }
