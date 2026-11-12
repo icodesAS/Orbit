@@ -7,9 +7,7 @@ import {
   Radar,
   FolderGit2,
   SlidersHorizontal,
-  Command,
   Plus,
-  Keyboard,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -37,12 +35,9 @@ export default function Sidebar({
   onSelectSection,
   counts,
   isSignedIn = false,
-  onOpenCommandPalette,
   onOpenNewModal,
-  onOpenShortcutsModal,
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
 
   const navItems: {
     id: NavSection;
@@ -83,77 +78,71 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`hidden md:flex flex-col justify-between h-screen bg-white border-r border-[#E5E5E1] select-none shrink-0 z-30 transition-[width] duration-150 ease-out ${
+      className={`hidden md:flex flex-col justify-between h-screen bg-canvas-sunken border-r border-line select-none shrink-0 z-30 transition-[width] duration-120 ease-out ${
         isCollapsed ? 'w-14' : 'w-[220px]'
       }`}
       aria-label="Primary Navigation"
     >
       <div className="flex flex-col min-w-0">
         {/* Workspace Brand & Collapse Toggle */}
-        <div className="h-12 flex items-center justify-between px-3.5 border-b border-[#E5E5E1] gap-2">
-          <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
-            <div className="w-6 h-6 rounded bg-[#4355B9]/10 border border-[#4355B9]/20 flex items-center justify-center shrink-0 text-[#4355B9] font-mono font-bold text-[11px]">
-              OR
-            </div>
-            {!isCollapsed && (
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="font-semibold text-sm tracking-tight text-[#16181D]">
-                  Orbit
-                </span>
-                <span
-                  className={`font-mono text-[9px] px-1 py-0.2 rounded border uppercase font-medium ${
-                    isSignedIn
-                      ? 'text-[#067647] bg-[#ECFDF3] border-[#D1FADF]'
-                      : 'text-[#6B7280] bg-[#F5F5F3] border-[#E5E5E1]'
-                  }`}
-                >
-                  {isSignedIn ? 'SYNCED' : 'GUEST'}
-                </span>
-              </div>
+        <div className="h-11 flex items-center justify-between px-3.5 border-b border-line gap-2">
+          <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+            <span className="font-semibold text-[13px] tracking-tight text-ink">
+              Orbit
+            </span>
+            {!isCollapsed && isSignedIn && (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-success shrink-0"
+                title="Synced with cloud"
+                aria-label="Synced with cloud"
+              />
+            )}
+            {!isCollapsed && !isSignedIn && (
+              <span className="font-mono text-[10px] text-ink-3">
+                guest
+              </span>
             )}
           </div>
 
           <button
             type="button"
             onClick={() => setIsCollapsed((prev) => !prev)}
-            className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] transition-colors shrink-0"
+            className="p-1 rounded text-ink-3 hover:text-ink hover:bg-hover transition-colors shrink-0"
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4" />
+              <PanelLeftOpen className="w-3.5 h-3.5" />
             ) : (
-              <PanelLeftClose className="w-4 h-4" />
+              <PanelLeftClose className="w-3.5 h-3.5" />
             )}
           </button>
         </div>
 
         {/* New Opportunity Track CTA */}
-        <div className="p-2 border-b border-[#E5E5E1]/70">
+        <div className="p-2 border-b border-line">
           <button
             type="button"
             onClick={onOpenNewModal}
-            title="New Opportunity (N)"
-            className={`w-full h-8 flex items-center gap-2.5 rounded-lg border border-[#E5E5E1] bg-[#F5F5F3] hover:bg-white text-[#16181D] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#4355B9] ${
+            title="New track (N)"
+            className={`w-full h-[30px] flex items-center rounded-md border border-line-strong bg-surface hover:bg-hover text-ink text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
               isCollapsed ? 'justify-center px-0' : 'px-2.5 justify-between'
             }`}
           >
             <span className="flex items-center gap-2 truncate">
-              <Plus className="w-3.5 h-3.5 text-[#4355B9] shrink-0" />
-              {!isCollapsed && (
-                <span className="text-xs font-medium truncate">New Track</span>
-              )}
+              <Plus className="w-3.5 h-3.5 text-ink-3 shrink-0" />
+              {!isCollapsed && <span className="truncate">New track</span>}
             </span>
             {!isCollapsed && (
-              <kbd className="font-mono text-[10px] text-[#6B7280] bg-white border border-[#E5E5E1] px-1 py-0.2 rounded shadow-2xs">
+              <span className="font-mono text-[11px] text-ink-3">
                 N
-              </kbd>
+              </span>
             )}
           </button>
         </div>
 
         {/* Navigation Items */}
-        <nav className="p-2 space-y-1">
+        <nav className="p-2 space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -163,38 +152,25 @@ export default function Sidebar({
                 type="button"
                 onClick={() => onSelectSection(item.id)}
                 title={`${item.label} (${item.shortcut})`}
-                className={`w-full h-8.5 flex items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#4355B9] ${
-                  isCollapsed ? 'justify-center px-0' : 'justify-between px-2.5'
+                className={`w-full h-[30px] flex items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
+                  isCollapsed ? 'justify-center px-0' : 'justify-between px-2'
                 } ${
                   isActive
-                    ? 'bg-[#4355B9]/10 text-[#4355B9] font-medium'
-                    : 'text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3]'
+                    ? 'bg-selected text-ink font-medium'
+                    : 'text-ink-2 hover:text-ink hover:bg-hover'
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon className="w-4 h-4 shrink-0" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon className="w-4 h-4 shrink-0 text-ink-3" />
                   {!isCollapsed && (
-                    <span className="text-xs truncate">{item.label}</span>
+                    <span className="text-[13px] truncate">{item.label}</span>
                   )}
                 </div>
 
-                {!isCollapsed && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {typeof item.count === 'number' && item.count > 0 && (
-                      <span
-                        className={`font-mono text-[11px] tabular-nums px-1.5 py-0.2 rounded ${
-                          isActive
-                            ? 'bg-[#4355B9]/15 text-[#4355B9]'
-                            : 'bg-[#F5F5F3] text-[#6B7280]'
-                        }`}
-                      >
-                        {item.count}
-                      </span>
-                    )}
-                    <kbd className="font-mono text-[10px] text-[#6B7280]/60">
-                      {item.shortcut}
-                    </kbd>
-                  </div>
+                {!isCollapsed && typeof item.count === 'number' && item.count > 0 && (
+                  <span className="font-mono text-[11.5px] text-ink-3 tabular-nums">
+                    {item.count}
+                  </span>
                 )}
               </button>
             );
@@ -202,68 +178,20 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Footer / Settings Menu */}
-      <div className="p-2 border-t border-[#E5E5E1] space-y-1 relative">
-        {/* Settings Popover */}
-        {isSettingsMenuOpen && (
-          <div
-            className="absolute bottom-11 left-2 w-48 bg-white border border-[#E5E5E1] rounded-lg shadow-md p-1 space-y-0.5 text-xs z-50"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                onSelectSection('settings');
-                setIsSettingsMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left text-[#16181D] hover:bg-[#F5F5F3] font-medium"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#6B7280]" />
-              <span>Workspace Settings</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onOpenShortcutsModal();
-                setIsSettingsMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3]"
-            >
-              <Keyboard className="w-3.5 h-3.5 text-[#6B7280]" />
-              <span>Shortcuts Map (?)</span>
-            </button>
-          </div>
-        )}
-
+      {/* Footer / Settings Single Row */}
+      <div className="p-2 border-t border-line">
         <button
           type="button"
-          onClick={() => setIsSettingsMenuOpen((prev) => !prev)}
-          title="Settings & Menu"
-          className={`w-full h-8 flex items-center rounded-lg transition-colors text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] ${
-            isCollapsed ? 'justify-center px-0' : 'justify-between px-2.5'
-          } ${activeSection === 'settings' ? 'bg-[#4355B9]/10 text-[#4355B9]' : ''}`}
+          onClick={() => onSelectSection('settings')}
+          title="Settings"
+          className={`w-full h-[30px] flex items-center rounded-md transition-colors text-ink-2 hover:text-ink hover:bg-hover ${
+            isCollapsed ? 'justify-center px-0' : 'px-2'
+          } ${activeSection === 'settings' ? 'bg-selected text-ink font-medium' : ''}`}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <SlidersHorizontal className="w-4 h-4 shrink-0" />
-            {!isCollapsed && <span className="text-xs truncate">Settings</span>}
+          <div className="flex items-center gap-2 min-w-0">
+            <SlidersHorizontal className="w-4 h-4 shrink-0 text-ink-3" />
+            {!isCollapsed && <span className="text-[13px] truncate">Settings</span>}
           </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenCommandPalette}
-          title="Command Palette (⌘K)"
-          className={`w-full h-8 flex items-center rounded-lg transition-colors text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] ${
-            isCollapsed ? 'justify-center px-0' : 'justify-between px-2.5'
-          }`}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Command className="w-4 h-4 shrink-0" />
-            {!isCollapsed && <span className="text-xs truncate">Commands</span>}
-          </div>
-          {!isCollapsed && (
-            <kbd className="font-mono text-[10px] text-[#6B7280]">⌘K</kbd>
-          )}
         </button>
       </div>
     </aside>

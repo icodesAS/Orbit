@@ -3,14 +3,6 @@
 import React from 'react';
 import { Opportunity, ArsenalProject } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
-import OpportunityHeatChip from './OpportunityHeatChip';
-import {
-  Radar,
-  Sparkles,
-  ArrowRight,
-  CheckCircle2,
-  Plus,
-} from 'lucide-react';
 
 interface TodayViewProps {
   opportunities: Opportunity[];
@@ -27,18 +19,13 @@ interface TodayViewProps {
 
 export default function TodayView({
   opportunities,
-  projectsMap,
-  focusedId,
   unreviewedRadarCount,
-  canUseAi = false,
   onFocusOpportunity,
-  onOpenAskAI,
-  onAdvanceStatus,
   onJumpToRadar,
   onOpenNewModal,
 }: TodayViewProps) {
   const urgentItems = opportunities
-    .filter((o) => o.status === 'active' || o.status === 'waitlist')
+    .filter((o) => (o.status === 'active' || o.status === 'waitlist') && o.deadline)
     .map((o) => ({
       opp: o,
       deadlineInfo: getDeadlineInfo(o.deadline, o.status),
@@ -50,156 +37,150 @@ export default function TodayView({
         (b.deadlineInfo.hoursRemaining ?? 999)
     );
 
+  const within24h = urgentItems.filter((i) => (i.deadlineInfo.hoursRemaining ?? 999) <= 24);
+  const within72h = urgentItems.filter((i) => (i.deadlineInfo.hoursRemaining ?? 999) > 24);
+
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 pb-4 border-b border-[#E5E5E1]">
+    <div className="pt-10 px-8 max-w-[760px] mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 pb-3 border-b border-line">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-[#16181D]">
-            Today <span className="font-serif italic font-normal text-[#4355B9]">Horizon</span>
+          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-ink">
+            Today
           </h1>
-          <p className="text-xs text-[#6B7280] mt-1">
-            Hard deadlines expiring within 72 hours, prioritized for execution.
+          <p className="text-[13px] text-ink-3 mt-0.5">
+            Deadlines in the next 72 hours.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onJumpToRadar}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#E5E5E1] bg-white hover:bg-[#F5F5F3] text-xs text-[#16181D] transition-colors self-start sm:self-auto group shadow-2xs"
-        >
-          <Radar className="w-3.5 h-3.5 text-[#4355B9]" />
-          <span>Daily Radar</span>
-          <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
-          <span className="font-mono text-[11px] text-[#4355B9] font-medium group-hover:underline">
-            {unreviewedRadarCount} new in this morning&apos;s digest →
-          </span>
-        </button>
+        {urgentItems.length > 0 && onOpenNewModal && (
+          <button
+            type="button"
+            onClick={onOpenNewModal}
+            className="h-[30px] px-3 rounded-md border border-line-strong bg-surface hover:bg-hover text-ink text-xs font-medium transition-colors"
+          >
+            Add opportunity <span className="font-mono text-ink-3 ml-1">N</span>
+          </button>
+        )}
       </div>
 
-      {opportunities.length === 0 ? (
-        <div className="p-8 text-center rounded-lg border border-[#E5E5E1] bg-white space-y-3">
-          <p className="text-xs text-[#6B7280]">
-            No opportunities in your workspace yet.
-          </p>
-          <div className="flex items-center justify-center gap-2">
-            {onOpenNewModal && (
-              <button
-                type="button"
-                onClick={onOpenNewModal}
-                className="px-3 py-1.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-white text-xs font-medium transition-colors flex items-center gap-1.5 shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add your first opportunity</span>
-              </button>
-            )}
+      {/* Radar Strip - 40px single line, hidden if 0 */}
+      {unreviewedRadarCount > 0 && (
+        <div className="h-10 flex items-center justify-between border-b border-line text-[13px]">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="font-medium text-ink">Radar</span>
+            <span className="text-ink-2 truncate">
+              {unreviewedRadarCount} new in today&apos;s digest
+            </span>
           </div>
+          <button
+            type="button"
+            onClick={onJumpToRadar}
+            className="text-ink-2 hover:text-ink text-xs font-medium transition-colors shrink-0 ml-3"
+          >
+            Review →
+          </button>
+        </div>
+      )}
+
+      {/* Empty States - Plain text on canvas, no boxes */}
+      {opportunities.length === 0 ? (
+        <div className="pt-16 text-center space-y-4">
+          <div className="space-y-1">
+            <p className="text-[13px] font-medium text-ink">
+              Workspace is empty.
+            </p>
+            <p className="text-[13px] text-ink-3">
+              Add your first opportunity track or check the radar digest.
+            </p>
+          </div>
+          {onOpenNewModal && (
+            <button
+              type="button"
+              onClick={onOpenNewModal}
+              className="h-[30px] px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-text text-xs font-medium transition-colors"
+            >
+              Add opportunity <span className="font-mono opacity-60 ml-1">N</span>
+            </button>
+          )}
         </div>
       ) : urgentItems.length === 0 ? (
-        <div className="p-6 rounded-lg border border-[#E5E5E1] bg-white flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 text-xs text-[#16181D]">
-            <CheckCircle2 className="w-4 h-4 text-[#067647]" />
-            <span>Zero hard deadlines expiring within the next 72 hours.</span>
+        <div className="pt-16 text-center space-y-4">
+          <div className="space-y-1">
+            <p className="text-[13px] font-medium text-ink">
+              Nothing due in the next 72 hours.
+            </p>
+            <p className="text-[13px] text-ink-3">
+              Add an opportunity or review your pipeline.
+            </p>
           </div>
-          <span className="font-mono text-[11px] text-[#6B7280] font-medium">
-            72H CLEAR
-          </span>
+          {onOpenNewModal && (
+            <button
+              type="button"
+              onClick={onOpenNewModal}
+              className="h-[30px] px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-text text-xs font-medium transition-colors"
+            >
+              Add opportunity <span className="font-mono opacity-60 ml-1">N</span>
+            </button>
+          )}
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-[#6B7280] px-1 font-mono">
-            <span>DUE SOON ({urgentItems.length})</span>
-            <span>PRESS ENTER TO EXPAND</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {urgentItems.map(({ opp, deadlineInfo }) => {
-              const isFocused = focusedId === opp.id;
-              const linkedNames = opp.projectIds
-                .map((pid) => projectsMap[pid]?.title)
-                .filter(Boolean);
-
-              return (
-                <div
-                  key={opp.id}
-                  onClick={() => onFocusOpportunity(opp.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onFocusOpportunity(opp.id);
-                    }
-                  }}
-                  className={`rounded-lg p-4 border transition-all text-left flex flex-col justify-between gap-3 bg-white cursor-pointer ${
-                    isFocused
-                      ? 'border-[#4355B9] ring-1 ring-[#4355B9]/20 shadow-xs'
-                      : 'border-[#E5E5E1] hover:border-[#D1D1CB] shadow-2xs'
-                  }`}
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#6B7280]">
-                        <span className="font-semibold text-[#16181D]">{opp.code}</span>
-                        <span aria-hidden="true">·</span>
-                        <span className="truncate">{opp.organization}</span>
-                      </div>
-                      <OpportunityHeatChip deadlineInfo={deadlineInfo} />
+        <div className="space-y-6">
+          {/* Next 24 hours */}
+          {within24h.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-ink-3 pb-1 border-b border-line">
+                <span className="font-medium">Next 24 hours</span>
+                <span className="font-mono tabular-nums">{within24h.length}</span>
+              </div>
+              <div className="divide-y divide-line">
+                {within24h.map(({ opp, deadlineInfo }) => (
+                  <div
+                    key={opp.id}
+                    onClick={() => onFocusOpportunity(opp.id)}
+                    className="h-10 px-2 flex items-center justify-between text-[13px] hover:bg-hover rounded-md cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-urgency-hot shrink-0" />
+                      <span className="font-medium text-ink truncate">{opp.title}</span>
+                      <span className="text-ink-3 truncate text-xs">{opp.organization}</span>
                     </div>
-
-                    <h3 className="text-sm font-semibold text-[#16181D] leading-snug">
-                      {opp.title}
-                    </h3>
-
-                    {opp.notes && (
-                      <p className="text-xs text-[#6B7280] line-clamp-2">
-                        {opp.notes}
-                      </p>
-                    )}
+                    <span className="font-mono text-[11.5px] text-urgency-hot tabular-nums shrink-0 ml-3">
+                      {deadlineInfo.relativeLabel}
+                    </span>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#E5E5E1] text-[11px] font-mono text-[#6B7280]">
-                    <div className="flex items-center gap-2 truncate">
-                      <span>
-                        {opp.tasksDone}/{opp.tasksTotal} tasks
-                      </span>
-                      {linkedNames.length > 0 && (
-                        <>
-                          <span aria-hidden="true" className="text-[#E5E5E1]">/</span>
-                          <span className="text-[#16181D] truncate font-medium">
-                            {linkedNames.join(', ')}
-                          </span>
-                        </>
-                      )}
+          {/* Next 3 days */}
+          {within72h.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-ink-3 pb-1 border-b border-line">
+                <span className="font-medium">Next 3 days</span>
+                <span className="font-mono tabular-nums">{within72h.length}</span>
+              </div>
+              <div className="divide-y divide-line">
+                {within72h.map(({ opp, deadlineInfo }) => (
+                  <div
+                    key={opp.id}
+                    onClick={() => onFocusOpportunity(opp.id)}
+                    className="h-10 px-2 flex items-center justify-between text-[13px] hover:bg-hover rounded-md cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-urgency-warn shrink-0" />
+                      <span className="font-medium text-ink truncate">{opp.title}</span>
+                      <span className="text-ink-3 truncate text-xs">{opp.organization}</span>
                     </div>
-
-                    <div
-                      className="flex items-center gap-1 shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => onOpenAskAI(opp)}
-                        title={canUseAi ? 'Scoped Ask AI (A)' : 'Sign in to use Ask AI'}
-                        className="px-2 py-0.5 rounded text-[11px] font-mono text-[#4355B9] hover:bg-[#4355B9]/10 transition-colors flex items-center gap-1"
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        <span>{canUseAi ? 'AI' : 'Sign in to use Ask AI'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onAdvanceStatus(opp.id)}
-                        title="Advance Status (S)"
-                        className="px-2 py-0.5 rounded text-[11px] font-mono text-[#067647] hover:bg-[#067647]/10 transition-colors flex items-center gap-0.5"
-                      >
-                        <span>Submit</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
+                    <span className="font-mono text-[11.5px] text-urgency-warn tabular-nums shrink-0 ml-3">
+                      {deadlineInfo.relativeLabel}
+                    </span>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Opportunity, ArsenalProject } from '@/lib/types';
 import OpportunityCard from './OpportunityCard';
-import { ChevronDown, ChevronRight, Layers } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface PipelineTierSectionProps {
   title: string;
@@ -29,7 +29,6 @@ interface PipelineTierSectionProps {
 
 export default function PipelineTierSection({
   title,
-  badge,
   opportunities,
   allProjects,
   focusedId,
@@ -51,53 +50,37 @@ export default function PipelineTierSection({
   const [isSectionOpen, setIsSectionOpen] = useState(true);
 
   return (
-    <section className="border border-[#E5E5E1] rounded-lg bg-white overflow-hidden shadow-2xs">
+    <section className="space-y-1">
+      {/* Group label row with hairline - no outer box */}
       <button
         type="button"
         onClick={() => setIsSectionOpen((prev) => !prev)}
-        className="w-full px-4 py-2.5 bg-[#F5F5F3] border-b border-[#E5E5E1] flex items-center justify-between hover:bg-[#ECECE8] transition-colors text-left"
+        className="w-full flex items-center justify-between pb-1 border-b border-line text-left hover:opacity-85 transition-opacity"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {isSectionOpen ? (
-            <ChevronDown className="w-3.5 h-3.5 text-[#6B7280]" />
+            <ChevronDown className="w-3.5 h-3.5 text-ink-3" />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-[#6B7280]" />
+            <ChevronRight className="w-3.5 h-3.5 text-ink-3" />
           )}
-          <span className="text-xs font-semibold text-[#16181D] tracking-wide">
+          <span className="text-xs font-medium text-ink-3">
             {title}
-          </span>
-          <span className="font-mono text-[10px] text-[#6B7280] px-1.5 py-0.5 rounded bg-white border border-[#E5E5E1]">
-            {badge}
           </span>
         </div>
 
-        <span className="font-mono text-[11px] text-[#6B7280] tabular-nums">
-          {opportunities.length} {opportunities.length === 1 ? 'item' : 'items'}
+        <span className="font-mono text-[11.5px] text-ink-3 tabular-nums">
+          {opportunities.length}
         </span>
       </button>
 
       {isSectionOpen && (
-        <div className="overflow-x-auto">
+        <div>
           {opportunities.length === 0 ? (
-            <div className="p-6 text-center text-xs text-[#6B7280] font-mono">
-              <Layers className="w-4 h-4 mx-auto mb-1.5 text-[#6B7280]" />
-              <span>No opportunities in this tier.</span>
+            <div className="py-3 text-xs text-ink-3">
+              No opportunities in this tier.
             </div>
           ) : (
-            <div className="min-w-[960px] divide-y divide-[#E5E5E1]">
-              {/* Table Column Headers */}
-              <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-[#FAFAFA] border-b border-[#E5E5E1] text-[11px] font-mono text-[#6B7280] font-medium items-center">
-                <div className="col-span-1">CODE</div>
-                <div className="col-span-3">TITLE & SOURCE</div>
-                <div className="col-span-1">TYPE</div>
-                <div className="col-span-1">DEADLINE</div>
-                <div className="col-span-2">PROGRESS</div>
-                <div className="col-span-2">PROJECTS</div>
-                <div className="col-span-1">STATUS</div>
-                <div className="col-span-1 text-right">ACTIONS</div>
-              </div>
-
-              {/* Table Rows */}
+            <div className="divide-y divide-line">
               {opportunities.map((opp) => (
                 <OpportunityCard
                   key={opp.id}

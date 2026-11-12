@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { ArsenalProject } from '@/lib/types';
 import { generateId } from '@/lib/id';
 import { isValidHttpsUrl } from '@/lib/url';
-import { FolderGit2, Plus, ExternalLink, Edit2, Trash2, X } from 'lucide-react';
+import { ExternalLink, Edit2, Trash2, X } from 'lucide-react';
 
 interface ArsenalViewProps {
   projects: ArsenalProject[];
@@ -104,156 +104,150 @@ export default function ArsenalView({
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-5">
-      <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#E5E5E1]">
+    <div className="pt-10 px-8 max-w-[960px] mx-auto space-y-8 text-[13px]">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 pb-3 border-b border-line">
         <div>
-          <div className="flex items-center gap-2">
-            <FolderGit2 className="w-4 h-4 text-[#4355B9]" />
-            <h1 className="text-xl font-semibold text-[#16181D]">
-              Project <span className="font-serif italic font-normal text-[#4355B9]">Arsenal</span>
-            </h1>
-          </div>
-          <p className="text-xs text-[#6B7280] mt-1">
-            Flagship projects & context blurbs used by Ask AI and daily discovery to match opportunities.
+          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-ink">
+            Arsenal
+          </h1>
+          <p className="text-[13px] text-ink-3 mt-0.5">
+            Flagship projects and context blurbs used for AI matching.
           </p>
         </div>
 
         <button
           type="button"
           onClick={openCreate}
-          className="px-3.5 py-1.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-xs font-medium text-white flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-2xs transition-colors"
+          className="h-[30px] px-3 rounded-md border border-line-strong bg-surface hover:bg-hover text-ink text-xs font-medium transition-colors self-start sm:self-auto"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Project</span>
+          Add project
         </button>
       </div>
 
       {isCreating && (
-        <form onSubmit={handleSubmit} className="p-4 rounded-lg bg-white border border-[#E5E5E1] space-y-3 text-xs shadow-sm">
-          <div className="flex items-center justify-between pb-2 border-b border-[#E5E5E1]">
-            <span className="font-semibold text-[#16181D]">
-              {editingProject ? `Edit ${editingProject.title}` : 'Add New Arsenal Project'}
+        <form onSubmit={handleSubmit} className="p-4 rounded-[10px] bg-surface border border-line space-y-3 shadow-md">
+          <div className="flex items-center justify-between pb-2 border-b border-line">
+            <span className="font-semibold text-ink text-[13px]">
+              {editingProject ? `Edit ${editingProject.title}` : 'Add project'}
             </span>
-            <button type="button" onClick={closeForm} className="text-[#6B7280] hover:text-[#16181D] p-1">
+            <button type="button" onClick={closeForm} className="text-ink-3 hover:text-ink p-1">
               <X className="w-4 h-4" />
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[#6B7280] mb-1 font-medium">Project Name *</label>
+              <label className="block text-ink text-xs font-medium mb-1">Project title *</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. TestEngine"
-                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none"
+                className="w-full h-8 bg-surface border border-line-strong rounded-md px-2.5 text-ink text-xs focus:outline-none focus:border-ink"
               />
             </div>
             <div>
-              <label className="block text-[#6B7280] mb-1 font-medium">Tech Stack (comma-separated)</label>
+              <label className="block text-ink text-xs font-medium mb-1">Tech stack (comma-separated)</label>
               <input
                 type="text"
                 value={techStackInput}
                 onChange={(e) => setTechStackInput(e.target.value)}
                 placeholder="TypeScript, Docker, Rust"
-                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] font-mono focus:bg-white focus:border-[#4355B9] focus:outline-none"
+                className="w-full h-8 bg-surface border border-line-strong rounded-md px-2.5 text-ink font-mono text-xs focus:outline-none focus:border-ink"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[#6B7280] mb-1 font-medium">One-Line Description</label>
+            <label className="block text-ink text-xs font-medium mb-1">One-line description</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Lightweight test runner with deterministic sandbox verification"
-              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none"
+              placeholder="Deterministic sandbox execution engine"
+              className="w-full h-8 bg-surface border border-line-strong rounded-md px-2.5 text-ink text-xs focus:outline-none focus:border-ink"
             />
           </div>
 
           <div>
-            <label className="block text-[#6B7280] mb-1 font-medium">Links (one per line, e.g. &apos;GitHub: https://...&apos;)</label>
+            <label className="block text-ink text-xs font-medium mb-1">Links (e.g. GitHub: https://...)</label>
             <textarea
               rows={2}
               value={linksInput}
               onChange={(e) => setLinksInput(e.target.value)}
-              placeholder="GitHub: https://github.com/org/repo&#10;Docs: https://docs.org"
-              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] font-mono focus:bg-white focus:border-[#4355B9] focus:outline-none leading-relaxed"
+              placeholder="GitHub: https://github.com/..."
+              className="w-full bg-surface border border-line-strong rounded-md p-2 text-ink font-mono text-xs focus:outline-none focus:border-ink"
             />
           </div>
 
           <div>
-            <label className="block text-[#6B7280] mb-1 font-medium">Context Blurb (~100 words for AI matching)</label>
+            <label className="block text-ink text-xs font-medium mb-1">Context blurb (for AI matching)</label>
             <textarea
               rows={3}
               value={contextBlurb}
               onChange={(e) => setContextBlurb(e.target.value)}
-              placeholder="Plain-English architectural summary and benchmarks used by Gemini..."
-              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] rounded px-3 py-1.5 text-[#16181D] focus:bg-white focus:border-[#4355B9] focus:outline-none"
+              placeholder="Plain-English architectural details..."
+              className="w-full bg-surface border border-line-strong rounded-md p-2 text-ink text-xs focus:outline-none focus:border-ink"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={closeForm} className="px-3 py-1.5 rounded bg-white border border-[#E5E5E1] text-[#6B7280] hover:text-[#16181D]">
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <button type="button" onClick={closeForm} className="h-[30px] px-3 rounded-md border border-line-strong bg-surface hover:bg-hover text-ink text-xs">
               Cancel
             </button>
-            <button type="submit" className="px-4 py-1.5 rounded bg-[#4355B9] hover:bg-[#3848A3] text-white font-medium transition-colors shadow-2xs">
-              {editingProject ? 'Save Changes' : 'Save Project'}
+            <button type="submit" className="h-[30px] px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-text text-xs font-medium transition-colors">
+              {editingProject ? 'Save changes' : 'Save project'}
             </button>
           </div>
         </form>
       )}
 
       {projects.length === 0 && !isCreating ? (
-        <div className="p-8 text-center rounded-lg border border-[#E5E5E1] bg-white space-y-3 shadow-2xs">
-          <p className="text-xs text-[#6B7280]">No flagship projects in your Arsenal yet.</p>
-          <div className="flex items-center justify-center gap-2">
-            <button type="button" onClick={openCreate} className="px-3 py-1.5 rounded-lg bg-[#4355B9] hover:bg-[#3848A3] text-white font-mono text-xs transition-colors shadow-2xs">
-              Add your first project
-            </button>
-          </div>
+        <div className="pt-16 text-center space-y-1">
+          <p className="text-[13px] font-medium text-ink">Arsenal is empty.</p>
+          <p className="text-[13px] text-ink-3">Add flagship projects to link with opportunities.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="divide-y divide-line">
           {projects.map((project) => (
-            <div key={project.id} className="p-4 rounded-lg bg-white border border-[#E5E5E1] flex flex-col justify-between gap-4 shadow-2xs hover:border-[#D1D1CB] transition-colors">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-mono text-sm font-semibold text-[#4355B9]">{project.title}</h3>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[11px] text-[#6B7280] tabular-nums">
-                      linked in {project.usedInCount} tracks
-                    </span>
-                    <button type="button" onClick={() => openEdit(project)} title="Edit Project" className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] transition-colors">
-                      <Edit2 className="w-3 h-3" />
-                    </button>
-                    <button type="button" onClick={() => onDeleteProject(project.id)} title="Delete Project" className="p-1 rounded text-[#6B7280] hover:text-[#D92D20] hover:bg-[#FEE4E2] transition-colors">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
+            <div key={project.id} className="py-3 px-2 hover:bg-hover rounded-md transition-colors space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="font-medium text-ink text-[13px]">{project.title}</h3>
+                  <span className="font-mono text-[11.5px] text-ink-3">
+                    ({project.usedInCount} tracks)
+                  </span>
                 </div>
-                <p className="text-xs text-[#16181D] font-medium">{project.description}</p>
-                <p className="text-xs text-[#6B7280] leading-relaxed">{project.contextBlurb}</p>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button type="button" onClick={() => openEdit(project)} title="Edit" className="p-1 text-ink-3 hover:text-ink">
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={() => onDeleteProject(project.id)} title="Delete" className="p-1 text-ink-3 hover:text-urgency-hot">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="pt-3 border-t border-[#E5E5E1] space-y-2">
-                <div className="font-mono text-[11px] text-[#6B7280]">
-                  STACK: {project.techStack.join(' · ')}
+              <p className="text-xs text-ink-2">{project.description}</p>
+
+              {project.techStack.length > 0 && (
+                <div className="font-mono text-[11px] text-ink-3 pt-0.5">
+                  {project.techStack.join(' · ')}
                 </div>
-                {project.urls.length > 0 && (
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {project.urls.filter((u) => isValidHttpsUrl(u.url)).map((u) => (
-                      <a key={u.label} href={u.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-[#4355B9] hover:underline">
-                        <span>{u.label}</span>
-                        <ExternalLink className="w-2.5 h-2.5" />
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
+
+              {project.urls.length > 0 && (
+                <div className="flex items-center gap-3 flex-wrap pt-0.5">
+                  {project.urls.filter((u) => isValidHttpsUrl(u.url)).map((u) => (
+                    <a key={u.label} href={u.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-3 hover:text-ink hover:underline">
+                      <span>{u.label}</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

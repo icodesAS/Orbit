@@ -5,16 +5,7 @@ import { RadarItem, ArsenalProject, RadarPriority } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
 import { isValidHttpsUrl } from '@/lib/url';
 import TrackRadarItemModal from './TrackRadarItemModal';
-import {
-  Radar,
-  ExternalLink,
-  CheckCircle2,
-  AlertCircle,
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 
 interface RadarViewProps {
   radarItems: RadarItem[];
@@ -28,11 +19,11 @@ interface RadarViewProps {
   onToggleVerifyRadarItem: (id: string) => void;
 }
 
-const PRIORITY_HEADINGS: Record<RadarPriority, { title: string; subtitle: string }> = {
-  '1A': { title: '1A · Campus Ambassador & Lead Roles', subtitle: 'Leadership and campus advocacy programs' },
-  '1B': { title: '1B · Residencies, Fellowships & Research', subtitle: 'Independent research grants, stipends, and builder cohorts' },
-  '1C': { title: '1C · Hackathons & Internships', subtitle: 'Sprint builds, prize bounties, and technical sprints' },
-  '2': { title: '2 · Free Credits & Developer Perks', subtitle: 'Cloud vouchers, GPU allocations, and developer perks' },
+const PRIORITY_GROUPS: Record<RadarPriority, { title: string; subtitle: string }> = {
+  '1A': { title: 'Campus ambassador and lead roles', subtitle: 'Leadership and campus advocacy programs.' },
+  '1B': { title: 'Residencies, fellowships and research', subtitle: 'Independent research grants, stipends, and builder cohorts.' },
+  '1C': { title: 'Hackathons and internships', subtitle: 'Sprint builds, prize bounties, and technical sprints.' },
+  '2': { title: 'Free credits and developer perks', subtitle: 'Cloud vouchers, GPU allocations, and developer perks.' },
 };
 
 export default function RadarView({
@@ -47,11 +38,13 @@ export default function RadarView({
   onToggleVerifyRadarItem,
 }: RadarViewProps) {
   const [openedUrls, setOpenedUrls] = useState<Record<string, boolean>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [trackingItem, setTrackingItem] = useState<RadarItem | null>(null);
 
   const currentDateStr = selectedDate || availableDates[0] || new Date().toISOString().split('T')[0];
 
-  const handleOpenSource = (item: RadarItem) => {
+  const handleOpenSource = (e: React.MouseEvent, item: RadarItem) => {
+    e.stopPropagation();
     if (!isValidHttpsUrl(item.url)) {
       alert('Invalid URL: only HTTPS URLs are allowed');
       return;
@@ -74,7 +67,6 @@ export default function RadarView({
 
   const formattedDate = new Date(currentDateStr + 'T12:00:00').toLocaleDateString(undefined, {
     weekday: 'short',
-    year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
@@ -82,174 +74,170 @@ export default function RadarView({
   const priorities: RadarPriority[] = ['1A', '1B', '1C', '2'];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E5E5E1]">
+    <div className="pt-10 px-8 max-w-[960px] mx-auto space-y-8 text-[13px]">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 pb-3 border-b border-line">
         <div>
-          <div className="flex items-center gap-2">
-            <Radar className="w-4 h-4 text-[#4355B9]" />
-            <h1 className="text-xl font-semibold text-[#16181D]">
-              Daily <span className="font-serif italic font-normal text-[#4355B9]">Opportunity Radar</span>
-            </h1>
-          </div>
-          <p className="text-xs text-[#6B7280] mt-1">
-            Read-only morning digest. Open source link to unlock verification. Click Track to confirm deadline & copy into pipeline.
+          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-ink">
+            Radar
+          </h1>
+          <p className="text-[13px] text-ink-3 mt-0.5">
+            Today&apos;s digest. Open the source to verify, then track.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-white border border-[#E5E5E1] rounded-lg p-1 shadow-2xs self-start sm:self-auto">
+        {/* Date switcher as ghost controls */}
+        <div className="flex items-center gap-1 font-mono text-[11.5px] text-ink-3 self-start sm:self-auto">
           <button
             type="button"
             onClick={handlePrevDate}
             disabled={availableDates.indexOf(currentDateStr) <= 0}
+            className="p-1 text-ink-3 hover:text-ink disabled:opacity-30 disabled:pointer-events-none transition-colors"
             title="Previous digest"
-            className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] disabled:opacity-30 disabled:pointer-events-none transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-
-          <div className="flex items-center gap-1.5 px-2 font-mono text-xs text-[#16181D]">
-            <Calendar className="w-3.5 h-3.5 text-[#4355B9]" />
-            <span>{formattedDate}</span>
-          </div>
-
+          <span className="px-1 tabular-nums">{formattedDate}</span>
           <button
             type="button"
             onClick={handleNextDate}
             disabled={availableDates.indexOf(currentDateStr) >= availableDates.length - 1}
+            className="p-1 text-ink-3 hover:text-ink disabled:opacity-30 disabled:pointer-events-none transition-colors"
             title="Next digest"
-            className="p-1 rounded text-[#6B7280] hover:text-[#16181D] hover:bg-[#F5F5F3] disabled:opacity-30 disabled:pointer-events-none transition-colors"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
       {!isSignedIn ? (
-        <div className="p-8 text-center rounded-lg border border-[#E5E5E1] bg-white space-y-3 shadow-2xs">
-          <p className="text-xs text-[#6B7280]">
-            Sign in to see your morning digest. The digest needs the morning job set up for your account.
-          </p>
+        <div className="pt-16 text-center space-y-1">
+          <p className="text-[13px] font-medium text-ink">Sign in to view radar.</p>
+          <p className="text-[13px] text-ink-3">Daily digests sync to signed-in accounts via GitHub Actions.</p>
         </div>
       ) : radarItems.length === 0 ? (
-        <div className="p-8 text-center rounded-lg border border-[#E5E5E1] bg-white space-y-3 shadow-2xs">
-          <p className="text-xs text-[#6B7280]">No digest yet.</p>
+        <div className="pt-16 text-center space-y-1">
+          <p className="text-[13px] font-medium text-ink">No radar digest available for this date.</p>
+          <p className="text-[13px] text-ink-3">Digests are generated daily at 9:00 AM IST via GitHub Actions.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {priorities.map((priority) => {
             const items = radarItems.filter((i) => i.priority === priority);
-            const meta = PRIORITY_HEADINGS[priority];
+            const meta = PRIORITY_GROUPS[priority];
 
             return (
               <section key={priority} className="space-y-2">
-                <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E5E1] pb-1.5">
+                {/* Group label row with hairline */}
+                <div className="flex items-baseline justify-between gap-2 pb-1 border-b border-line">
                   <div>
-                    <h2 className="text-xs font-semibold text-[#16181D] tracking-wide">{meta.title}</h2>
-                    <p className="text-[11px] text-[#6B7280]">{meta.subtitle}</p>
+                    <h2 className="text-xs font-medium text-ink-3">{meta.title}</h2>
+                    <p className="text-[11.5px] text-ink-3">{meta.subtitle}</p>
                   </div>
-                  <span className="font-mono text-[11px] text-[#6B7280] tabular-nums">
-                    {items.length} {items.length === 1 ? 'match' : 'matches'}
+                  <span className="font-mono text-[11.5px] text-ink-3 tabular-nums">
+                    {items.length}
                   </span>
                 </div>
 
                 {items.length === 0 ? (
-                  <div className="p-3 rounded-lg bg-white border border-[#E5E5E1] text-xs text-[#6B7280] font-mono shadow-2xs">
-                    No opportunities listed in this section today.
+                  <div className="py-3 text-xs text-ink-3">
+                    No items in this section today.
                   </div>
                 ) : (
-                  <div className="divide-y divide-[#E5E5E1] border border-[#E5E5E1] rounded-lg bg-white shadow-2xs">
+                  <div className="divide-y divide-line">
                     {items.map((item) => {
                       const deadlineInfo = getDeadlineInfo(item.deadline);
                       const recProject = item.recommendedProjectId ? projectsMap[item.recommendedProjectId] : null;
-                      const fitsLabel = recProject ? recProject.title : 'Fresh';
                       const canVerify = item.verified || openedUrls[item.id];
+                      const isExpanded = expandedId === item.id;
 
                       return (
                         <div
                           key={item.id}
-                          className="px-4 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs hover:bg-[#FAFAFA] transition-colors"
+                          onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                          className="py-2.5 px-2 hover:bg-hover rounded-md cursor-pointer transition-colors space-y-1.5"
                         >
-                          <div className="min-w-0 flex-1 flex items-baseline gap-2">
-                            <span className="font-mono text-[11px] text-[#6B7280] shrink-0">{item.organization}</span>
-                            <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
-                            <span className="font-medium text-[#16181D] truncate" title={item.title}>
-                              {item.title}
-                            </span>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            {/* Left: Verification Dot + Title + Org */}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (canVerify) onToggleVerifyRadarItem(item.id);
+                                }}
+                                disabled={!canVerify}
+                                className={`w-2 h-2 rounded-full shrink-0 border transition-colors ${
+                                  item.verified
+                                    ? 'bg-ink border-ink'
+                                    : canVerify
+                                    ? 'border-urgency-warn hover:bg-urgency-warn'
+                                    : 'border-line-strong cursor-not-allowed opacity-50'
+                                }`}
+                                title={
+                                  item.verified
+                                    ? 'Verified (click to toggle)'
+                                    : canVerify
+                                    ? 'Source opened. Click to mark verified.'
+                                    : 'Open source first to verify'
+                                }
+                              />
+                              <span className="font-medium text-ink truncate text-[13px]">
+                                {item.title}
+                              </span>
+                              <span className="text-ink-3 truncate text-xs">
+                                {item.organization}
+                              </span>
+                              {recProject && (
+                                <span className="text-[11px] font-mono text-ink-2 bg-canvas px-1.5 py-0.2 rounded border border-line shrink-0">
+                                  fits: {recProject.title}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Right: Deadline + Source Link + Track CTA */}
+                            <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
+                              {item.deadline && (
+                                <span className="font-mono text-[11.5px] text-ink-3 tabular-nums">
+                                  {deadlineInfo.relativeLabel}
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={(e) => handleOpenSource(e, item)}
+                                className="inline-flex items-center gap-1 text-xs text-ink-3 hover:text-ink transition-colors"
+                                title="Open source in new tab"
+                              >
+                                <span>Source</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </button>
+
+                              {item.promoted ? (
+                                <span className="text-xs text-ink-3 font-mono">
+                                  Tracked ✓
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTrackingItem(item);
+                                  }}
+                                  className="h-[26px] px-2.5 rounded-md border border-line-strong bg-surface hover:bg-hover text-ink text-xs font-medium transition-colors"
+                                >
+                                  Track
+                                </button>
+                              )}
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-3 font-mono text-[11px] shrink-0 justify-between md:justify-end flex-wrap">
-                            <span className="text-[#6B7280] whitespace-nowrap" title={item.deadline || undefined}>
-                              {deadlineInfo.relativeLabel}
-                            </span>
-
-                            <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
-
-                            <span
-                              className={`whitespace-nowrap ${recProject ? 'text-[#4355B9] font-medium' : 'text-[#6B7280]'}`}
-                              title={recProject ? `Fits: ${recProject.title}` : 'No project linked yet'}
-                            >
-                              {fitsLabel}
-                            </span>
-
-                            <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
-
-                            <button
-                              type="button"
-                              onClick={() => handleOpenSource(item)}
-                              className="inline-flex items-center gap-1 text-[#4355B9] hover:underline whitespace-nowrap"
-                              title="Open source link in new tab"
-                            >
-                              <span>Source</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </button>
-
-                            <span className="text-[#E5E5E1]" aria-hidden="true">·</span>
-
-                            {item.verified ? (
-                              <button
-                                type="button"
-                                onClick={() => onToggleVerifyRadarItem(item.id)}
-                                className="inline-flex items-center gap-1 text-[#067647] bg-[#ECFDF3] border border-[#D1FADF] px-1.5 py-0.5 rounded text-[10px]"
-                                title="Click to unverify"
-                              >
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>Verified</span>
-                              </button>
-                            ) : canVerify ? (
-                              <button
-                                type="button"
-                                onClick={() => onToggleVerifyRadarItem(item.id)}
-                                className="inline-flex items-center gap-1 text-[#B54708] bg-[#FEF0C7] border border-[#FEDF89] px-1.5 py-0.5 rounded hover:bg-[#FEE4E2] transition-colors text-[10px]"
-                                title="Source link opened. Click to mark verified."
-                              >
-                                <AlertCircle className="w-3 h-3" />
-                                <span>Mark verified</span>
-                              </button>
-                            ) : (
-                              <span
-                                className="inline-flex items-center gap-1 text-[#6B7280] bg-[#F5F5F3] border border-[#E5E5E1] px-1.5 py-0.5 rounded text-[10px] cursor-not-allowed opacity-75"
-                                title="Open the source link first to enable verification"
-                              >
-                                <span>Unverified</span>
-                              </span>
-                            )}
-
-                            {item.promoted ? (
-                              <span className="px-2.5 py-1 rounded bg-[#ECFDF3] border border-[#D1FADF] text-[#067647] flex items-center gap-1 text-[11px]">
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>Promoted</span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setTrackingItem(item)}
-                                className="px-2.5 py-1 rounded bg-[#4355B9] hover:bg-[#3848A3] text-white flex items-center gap-1 transition-colors whitespace-nowrap shadow-2xs text-[11px] font-medium"
-                              >
-                                <span>Track</span>
-                                <ArrowUpRight className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
+                          {/* Expandable Rich Briefing Summary */}
+                          {item.summary && isExpanded && (
+                            <div className="pt-1 text-xs text-ink-2 leading-relaxed pl-4 border-l-2 border-line">
+                              {item.summary}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

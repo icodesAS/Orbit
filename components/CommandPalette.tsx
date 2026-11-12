@@ -76,8 +76,8 @@ export default function CommandPalette({
         {
           id: `ctx-edit-${focusedOpportunity.id}`,
           category: `Focused (${focusedOpportunity.code})`,
-          label: `Edit Opportunity: ${focusedOpportunity.title}`,
-          sublabel: 'Title, URL, deadline, notes, application copy',
+          label: `Edit: ${focusedOpportunity.title}`,
+          sublabel: 'Title, URL, deadline, notes',
           shortcut: 'E',
           icon: Edit2,
           action: () => { if (onOpenEdit) onOpenEdit(focusedOpportunity); onClose(); },
@@ -86,7 +86,7 @@ export default function CommandPalette({
           id: `ctx-ai-${focusedOpportunity.id}`,
           category: `Focused (${focusedOpportunity.code})`,
           label: `Ask AI: ${focusedOpportunity.title}`,
-          sublabel: 'Open scoped right drawer',
+          sublabel: 'Open scoped assistant',
           shortcut: 'A',
           icon: Sparkles,
           action: () => { onOpenAskAI(focusedOpportunity); onClose(); },
@@ -94,8 +94,8 @@ export default function CommandPalette({
         {
           id: `ctx-adv-${focusedOpportunity.id}`,
           category: `Focused (${focusedOpportunity.code})`,
-          label: `Advance Status: ${focusedOpportunity.title}`,
-          sublabel: `Current: ${focusedOpportunity.status}`,
+          label: `Advance status: ${focusedOpportunity.title}`,
+          sublabel: `Status: ${focusedOpportunity.status}`,
           shortcut: 'S',
           icon: ArrowRight,
           action: () => { onAdvanceStatus(focusedOpportunity.id); onClose(); },
@@ -107,7 +107,7 @@ export default function CommandPalette({
         list.push({
           id: `ctx-link-${focusedOpportunity.id}-${proj.id}`,
           category: `Focused (${focusedOpportunity.code})`,
-          label: `${isLinked ? 'Unlink' : 'Link'} ${proj.title} → ${focusedOpportunity.code}`,
+          label: `${isLinked ? 'Unlink' : 'Link'} ${proj.title}`,
           sublabel: proj.techStack.slice(0, 3).join(', '),
           shortcut: 'P',
           icon: Link2,
@@ -120,53 +120,53 @@ export default function CommandPalette({
       {
         id: 'cmd-new-opp',
         category: 'Actions',
-        label: 'New Opportunity Track',
-        sublabel: 'Add hackathon, fellowship, ambassador, or waitlist',
+        label: 'New track',
+        sublabel: 'Add hackathon, fellowship, or ambassador role',
         shortcut: 'N',
         icon: Plus,
         action: () => { onClose(); onOpenNewModal(); },
       },
       {
         id: 'nav-today',
-        category: 'Navigation',
-        label: 'Go to Today Horizon',
-        sublabel: '72h hard deadlines and morning digest summary',
+        category: 'Go to',
+        label: 'Today',
+        sublabel: '72h deadlines and digest',
         shortcut: '1',
         icon: List,
         action: () => { onSelectSection('today'); onClose(); },
       },
       {
         id: 'nav-pipeline',
-        category: 'Navigation',
-        label: 'Go to Pipeline',
-        sublabel: 'Three operational tiers: Active, Waitlist, Submitted',
+        category: 'Go to',
+        label: 'Pipeline',
+        sublabel: 'Active, waitlist, and submitted tracks',
         shortcut: '2',
         icon: Layers,
         action: () => { onSelectSection('pipeline'); onClose(); },
       },
       {
         id: 'nav-radar',
-        category: 'Navigation',
-        label: 'Go to Radar',
-        sublabel: 'Daily discovery logs (1A, 1B, 1C, 2)',
+        category: 'Go to',
+        label: 'Radar',
+        sublabel: 'Daily morning digest',
         shortcut: '3',
         icon: Radar,
         action: () => { onSelectSection('radar'); onClose(); },
       },
       {
         id: 'nav-arsenal',
-        category: 'Navigation',
-        label: 'Go to Project Arsenal',
-        sublabel: projects.map((p) => p.title).join(', ') || 'Arsenal repositories',
+        category: 'Go to',
+        label: 'Arsenal',
+        sublabel: projects.map((p) => p.title).join(', ') || 'Projects',
         shortcut: '4',
         icon: FolderGit2,
         action: () => { onSelectSection('arsenal'); onClose(); },
       },
       {
         id: 'nav-settings',
-        category: 'Navigation',
-        label: 'Go to Settings',
-        sublabel: 'Account sync, BYOK API key, JSON backup',
+        category: 'Go to',
+        label: 'Settings',
+        sublabel: 'Account sync, BYOK key, JSON backups',
         icon: SlidersHorizontal,
         action: () => { onSelectSection('settings'); onClose(); },
       }
@@ -177,9 +177,9 @@ export default function CommandPalette({
       .forEach((opp) => {
         list.push({
           id: `jump-${opp.id}`,
-          category: 'Jump to Opportunity',
+          category: 'Jump to track',
           label: `${opp.code} · ${opp.title}`,
-          sublabel: `${opp.organization} · ${opp.status.toUpperCase()}`,
+          sublabel: `${opp.organization} · ${opp.status}`,
           icon: List,
           action: () => { onSelectSection('pipeline'); onSelectOpportunity(opp); onClose(); },
         });
@@ -216,35 +216,35 @@ export default function CommandPalette({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[13vh] px-4 bg-black/35 backdrop-blur-xs select-none" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] px-4 bg-black/20 select-none" onClick={onClose}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: -6 }}
+          initial={{ opacity: 0, scale: 0.98, y: -4 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: -6 }}
-          transition={{ duration: 0.15 }}
+          exit={{ opacity: 0, scale: 0.98, y: -4 }}
+          transition={{ duration: 0.12 }}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={handleKeyDown}
-          className="w-full max-w-xl rounded-lg bg-white border border-[#E5E5E1] shadow-2xl overflow-hidden"
+          className="w-full max-w-[560px] rounded-[12px] bg-surface border border-line shadow-2xl overflow-hidden"
           role="dialog"
           aria-modal="true"
-          aria-label="Orbit Command Palette"
+          aria-label="Commands"
         >
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E5E5E1] bg-white">
-            <Search className="w-4 h-4 text-[#4355B9] shrink-0" />
+          <div className="flex items-center gap-2.5 px-4 h-11 border-b border-line bg-surface">
+            <Search className="w-4 h-4 text-ink-3 shrink-0" />
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
-              placeholder="Type a command, opportunity code, or project name..."
-              className="flex-1 bg-transparent text-sm text-[#16181D] placeholder:text-[#6B7280] focus:outline-none"
+              placeholder="Type a command or search..."
+              className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink-3 focus:outline-none"
             />
-            <kbd className="font-mono text-[10px] text-[#6B7280] bg-[#F5F5F3] border border-[#E5E5E1] px-1.5 py-0.5 rounded">ESC</kbd>
+            <span className="font-mono text-[11px] text-ink-3">ESC</span>
           </div>
 
-          <div className="max-h-80 overflow-y-auto p-1.5 divide-y divide-[#E5E5E1]/60">
+          <div className="max-h-80 overflow-y-auto p-1.5 divide-y divide-line">
             {filtered.length === 0 ? (
-              <div className="py-8 text-center text-xs text-[#6B7280] font-mono">No matching commands or opportunities for &ldquo;{query}&rdquo;</div>
+              <div className="py-8 text-center text-xs text-ink-3">No matching commands for &ldquo;{query}&rdquo;</div>
             ) : (
               filtered.map((item, idx) => {
                 const Icon = item.icon;
@@ -255,19 +255,19 @@ export default function CommandPalette({
                     type="button"
                     onMouseEnter={() => setSelectedIndex(idx)}
                     onClick={item.action}
-                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded text-left transition-colors ${
-                      isSelected ? 'bg-[#4355B9]/10 text-[#16181D]' : 'text-[#6B7280] hover:bg-[#F5F5F3] hover:text-[#16181D]'
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-left transition-colors ${
+                      isSelected ? 'bg-hover text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#4355B9]' : 'text-[#6B7280]'}`} />
+                      <Icon className="w-4 h-4 shrink-0 text-ink-3" />
                       <div className="min-w-0">
-                        <div className="text-xs font-medium truncate">{item.label}</div>
-                        {item.sublabel && <div className="text-[11px] font-mono text-[#6B7280] truncate">{item.category} · {item.sublabel}</div>}
+                        <div className="text-[13px] font-medium truncate">{item.label}</div>
+                        {item.sublabel && <div className="text-xs text-ink-3 truncate">{item.sublabel}</div>}
                       </div>
                     </div>
                     {item.shortcut && (
-                      <kbd className="font-mono text-[10px] text-[#6B7280] bg-[#F5F5F3] border border-[#E5E5E1] px-1.5 py-0.5 rounded shrink-0">{item.shortcut}</kbd>
+                      <span className="font-mono text-[11px] text-ink-3 shrink-0">{item.shortcut}</span>
                     )}
                   </button>
                 );
@@ -275,13 +275,12 @@ export default function CommandPalette({
             )}
           </div>
 
-          <div className="px-4 py-2 bg-[#F5F5F3] border-t border-[#E5E5E1] flex items-center justify-between text-[11px] font-mono text-[#6B7280]">
+          <div className="px-4 py-2 bg-canvas-sunken border-t border-line flex items-center justify-between text-xs font-mono text-ink-3">
             <div className="flex items-center gap-3">
               <span>↑↓ Navigate</span>
-              <span>↵ Execute</span>
-              <span>Esc Dismiss</span>
+              <span>↵ Run</span>
+              <span>Esc Close</span>
             </div>
-            <span>ORBIT COMMAND SYSTEM</span>
           </div>
         </motion.div>
       </div>

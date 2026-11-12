@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono, EB_Garamond } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
 const sans = Inter({
@@ -14,34 +14,27 @@ const mono = JetBrains_Mono({
   display: 'swap',
 });
 
-const serif = EB_Garamond({
-  subsets: ['latin'],
-  style: ['normal', 'italic'],
-  variable: '--font-serif',
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
-  title: 'Orbit — Autonomous Opportunity & Pipeline Command Center',
+  title: 'Orbit — Personal Opportunity Pipeline & Radar',
   description: 'Calm, keyboard-first opportunity pipeline and radar for builders.',
   openGraph: {
-    title: 'Orbit — Autonomous Opportunity & Pipeline Command Center',
+    title: 'Orbit — Personal Opportunity Pipeline & Radar',
     description: 'Calm, keyboard-first opportunity pipeline and radar for builders.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Orbit — Autonomous Opportunity & Pipeline Command Center',
+    title: 'Orbit — Personal Opportunity Pipeline & Radar',
     description: 'Calm, keyboard-first opportunity pipeline and radar for builders.',
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} ${serif.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body
         suppressHydrationWarning
-        className="bg-[#F5F5F3] text-[#16181D] antialiased selection:bg-[#4355B9]/15 selection:text-[#4355B9] font-sans overflow-hidden text-sm"
+        className="bg-canvas text-ink antialiased selection:bg-selected selection:text-ink font-sans overflow-hidden text-[13px]"
       >
         {children}
       </body>

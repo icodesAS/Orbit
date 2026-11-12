@@ -1,10 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Search, Clock, Calendar } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Opportunity } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
-import OpportunityHeatChip from './OpportunityHeatChip';
 
 interface TopBarProps {
   opportunities: Opportunity[];
@@ -19,14 +18,12 @@ export default function TopBar({
   onOpenCommandPalette,
   onJumpToOpportunity,
 }: TopBarProps) {
-  // Current date in local timezone
   const todayFormatted = new Date().toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
 
-  // Find earliest active deadline
   const activeWithDeadlines = opportunities
     .filter((o) => (o.status === 'active' || o.status === 'waitlist') && o.deadline)
     .map((o) => ({
@@ -39,59 +36,60 @@ export default function TopBar({
   const earliest = activeWithDeadlines[0] || null;
 
   return (
-    <header className="h-12 bg-white border-b border-[#E5E5E1] px-4 flex items-center justify-between gap-4 shrink-0 select-none">
-      {/* Search Trigger */}
+    <header className="h-11 bg-canvas border-b border-line px-4 flex items-center justify-between gap-4 shrink-0 select-none">
+      {/* Search Input - 30px ghost style */}
       <button
         type="button"
         onClick={onOpenCommandPalette}
-        className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-[#E5E5E1] bg-[#F5F5F3] hover:bg-white text-[#6B7280] hover:text-[#16181D] text-xs transition-colors w-64 sm:w-80 justify-between text-left group"
-        title="Quick search (Ctrl+K or ⌘K)"
+        className="flex items-center gap-2 px-2.5 h-[30px] rounded-md border border-line bg-transparent hover:bg-surface text-ink-3 hover:text-ink text-xs transition-colors w-64 sm:w-72 justify-between text-left group"
+        title="Search (⌘K)"
       >
         <span className="flex items-center gap-2 truncate">
-          <Search className="w-3.5 h-3.5 text-[#6B7280] group-hover:text-[#16181D] shrink-0" />
-          <span className="truncate">Search opportunities, projects...</span>
+          <Search className="w-3.5 h-3.5 text-ink-3 shrink-0" />
+          <span className="truncate">Search</span>
         </span>
-        <kbd className="font-mono text-[10px] text-[#6B7280] bg-white border border-[#E5E5E1] px-1.5 py-0.5 rounded shadow-2xs shrink-0">
+        <span className="font-mono text-[11px] text-ink-3 shrink-0">
           ⌘K
-        </kbd>
+        </span>
       </button>
 
-      {/* Guest Label, Date & Next Deadline */}
-      <div className="flex items-center gap-3 sm:gap-4 text-xs">
+      {/* Right Side: Date & Next Deadline */}
+      <div className="flex items-center gap-3 text-xs">
         {isGuest && (
-          <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-[#F5F5F3] border border-[#E5E5E1] text-[#6B7280] whitespace-nowrap shrink-0">
-            Guest, saved on this device
+          <span className="font-mono text-[11px] text-ink-3 whitespace-nowrap shrink-0">
+            Guest (local)
           </span>
         )}
 
-        {/* Date */}
-        <div className="hidden sm:flex items-center gap-1.5 text-[#6B7280] font-mono text-[11px]">
-          <Calendar className="w-3.5 h-3.5 text-[#6B7280]" />
-          <span>{todayFormatted}</span>
-        </div>
+        <span className="hidden sm:inline font-mono text-[11.5px] text-ink-3 tabular-nums">
+          {todayFormatted}
+        </span>
 
-        <div className="hidden sm:block h-3.5 w-px bg-[#E5E5E1]" aria-hidden="true" />
+        <span className="hidden sm:inline text-line" aria-hidden="true">·</span>
 
-        {/* Next Deadline */}
-        <div className="flex items-center gap-2">
-          <span className="text-[#6B7280] text-[11px] hidden md:inline font-mono">Next:</span>
+        <div className="flex items-center gap-1.5 text-[11.5px] text-ink-3">
+          <span>Next:</span>
           {earliest ? (
             <button
               type="button"
               onClick={() => onJumpToOpportunity && onJumpToOpportunity(earliest.opp.id)}
-              className="flex items-center gap-1.5 hover:opacity-85 transition-opacity text-left"
-              title={`Jump to ${earliest.opp.code} - ${earliest.opp.title}`}
+              className="hover:underline text-ink font-mono tabular-nums"
+              title={`Jump to ${earliest.opp.title}`}
             >
-              <span className="font-mono text-[11px] text-[#16181D] font-medium hidden lg:inline truncate max-w-[140px]">
-                {earliest.opp.code}
+              <span
+                className={
+                  earliest.info.heat === 'red'
+                    ? 'text-urgency-hot'
+                    : earliest.info.heat === 'amber'
+                    ? 'text-urgency-warn'
+                    : 'text-urgency-calm'
+                }
+              >
+                {earliest.info.relativeLabel}
               </span>
-              <OpportunityHeatChip deadlineInfo={earliest.info} />
             </button>
           ) : (
-            <span className="flex items-center gap-1.5 text-[11px] font-mono text-[#6B7280]">
-              <Clock className="w-3 h-3 text-[#6B7280]" />
-              <span>None in 72h</span>
-            </span>
+            <span className="font-mono text-ink-3">none in 72h</span>
           )}
         </div>
       </div>

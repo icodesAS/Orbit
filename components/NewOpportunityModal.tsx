@@ -9,7 +9,7 @@ import {
 } from '@/lib/types';
 import { generateId } from '@/lib/id';
 import { computeUrlHash } from '@/lib/hash';
-import { X, Plus, Globe, Calendar } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface NewOpportunityModalProps {
   isOpen: boolean;
@@ -17,12 +17,6 @@ interface NewOpportunityModalProps {
   projects: ArsenalProject[];
   nextCodeNumber: number;
   onCreate: (opp: Opportunity) => void;
-}
-
-function getDefaultDatetimeLocal(): string {
-  const d = new Date(Date.now() + 3 * 24 * 3600 * 1000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export default function NewOpportunityModal({
@@ -36,18 +30,16 @@ export default function NewOpportunityModal({
   const [organization, setOrganization] = useState('');
   const [type, setType] = useState<OpportunityType>('hackathon');
   const [status, setStatus] = useState<OpportunityStatus>('active');
-  const [deadlineInput, setDeadlineInput] = useState(getDefaultDatetimeLocal);
+  const [deadlineInput, setDeadlineInput] = useState('');
   const [url, setUrl] = useState('');
   const [applicationCopy, setApplicationCopy] = useState('');
-  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>(() =>
-    projects[0] ? [projects[0].id] : []
-  );
-  const [initialTask, setInitialTask] = useState('Review submission requirements and deliverables');
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [initialTask, setInitialTask] = useState('');
 
   if (!isOpen) return null;
 
   const toggleProject = (id: string) => {
-    setSelectedProjectIds((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
+    setSelectedProjectIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -55,7 +47,7 @@ export default function NewOpportunityModal({
     if (!title.trim()) return;
 
     const now = new Date();
-    let deadlineIso = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString();
+    let deadlineIso: string | null = null;
     if (deadlineInput) {
       const parsed = new Date(deadlineInput);
       if (!isNaN(parsed.getTime())) {
@@ -79,8 +71,7 @@ export default function NewOpportunityModal({
       projectIds: selectedProjectIds,
       url: trimmedUrl || null,
       urlHash: computeUrlHash(trimmedUrl || `https://orbit.local/${Date.now()}`),
-      applicationCopy:
-        applicationCopy.trim() || 'Technical submission anchored by linked Arsenal repositories.',
+      applicationCopy: applicationCopy.trim() || null,
       notes: null,
       sourceRadarDate: null,
       sortOrder: 0,
@@ -106,12 +97,14 @@ export default function NewOpportunityModal({
     setOrganization('');
     setUrl('');
     setApplicationCopy('');
+    setInitialTask('');
+    setDeadlineInput('');
     onClose();
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20"
       onClick={onClose}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
@@ -122,59 +115,55 @@ export default function NewOpportunityModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-lg bg-white border border-[#E5E5E1] shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-[480px] rounded-[10px] bg-surface border border-line shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
         role="dialog"
         aria-modal="true"
-        aria-label="Create New Opportunity"
+        aria-label="New track"
       >
-        <div className="px-5 py-3.5 border-b border-[#E5E5E1] flex items-center justify-between bg-white shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-[#4355B9] font-medium">
-              ORB-{String(nextCodeNumber).padStart(2, '0')}
-            </span>
-            <h2 className="text-sm font-semibold text-[#16181D]">
-              New Opportunity Track
-            </h2>
-          </div>
+        <div className="px-5 py-3.5 border-b border-line flex items-center justify-between shrink-0">
+          <h2 className="text-[15px] font-semibold text-ink">
+            New track
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-[#6B7280] hover:text-[#16181D] p-1 rounded hover:bg-[#F5F5F3] transition-colors"
+            className="text-ink-3 hover:text-ink p-1 rounded transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="sm:col-span-2">
-              <label className="block text-[#16181D] font-medium mb-1">Opportunity Title *</label>
-              <input
-                type="text"
-                required
-                autoFocus
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Gemini 2.5 Pro Multimodal Challenge"
-                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none"
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 overflow-y-auto text-[13px]">
+          <div>
+            <label className="block text-ink text-xs font-medium mb-1.5">Title *</label>
+            <input
+              type="text"
+              required
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Program or challenge title"
+              className="w-full h-8 bg-surface border border-line-strong focus:border-ink rounded-md px-2.5 text-ink text-xs focus:outline-none placeholder:text-ink-3"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[#16181D] font-medium mb-1">Organization</label>
+              <label className="block text-ink text-xs font-medium mb-1.5">Organization</label>
               <input
                 type="text"
                 value={organization}
                 onChange={(e) => setOrganization(e.target.value)}
-                placeholder="e.g. Google Cloud"
-                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none"
+                placeholder="Organization or host"
+                className="w-full h-8 bg-surface border border-line-strong focus:border-ink rounded-md px-2.5 text-ink text-xs focus:outline-none placeholder:text-ink-3"
               />
             </div>
             <div>
-              <label className="block text-[#16181D] font-medium mb-1">Type</label>
+              <label className="block text-ink text-xs font-medium mb-1.5">Type</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as OpportunityType)}
-                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-2.5 py-1.5 text-[#16181D] font-mono focus:outline-none"
+                className="w-full h-8 bg-surface border border-line-strong focus:border-ink rounded-md px-2 text-ink text-xs focus:outline-none"
               >
                 <option value="hackathon">hackathon</option>
                 <option value="fellowship">fellowship</option>
@@ -185,27 +174,22 @@ export default function NewOpportunityModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[#16181D] font-medium mb-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-[#6B7280]" />
-                <span>Deadline (Local Time) *</span>
-              </label>
+              <label className="block text-ink text-xs font-medium mb-1.5">Deadline (local)</label>
               <input
                 type="datetime-local"
-                required
                 value={deadlineInput}
                 onChange={(e) => setDeadlineInput(e.target.value)}
-                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-2.5 py-1.5 text-[#16181D] font-mono focus:outline-none text-xs"
+                className="w-full h-8 bg-surface border border-line-strong focus:border-ink rounded-md px-2 text-ink font-mono text-xs focus:outline-none"
               />
             </div>
-
             <div>
-              <label className="block text-[#16181D] font-medium mb-1">Tier / Initial Status</label>
+              <label className="block text-ink text-xs font-medium mb-1.5">Tier / Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as OpportunityStatus)}
-                className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-2.5 py-1.5 text-[#16181D] font-mono focus:outline-none"
+                className="w-full h-8 bg-surface border border-line-strong focus:border-ink rounded-md px-2 text-ink text-xs focus:outline-none"
               >
                 <option value="active">Active Build (Tier 1)</option>
                 <option value="waitlist">Waitlist Watch (Tier 2)</option>
@@ -215,22 +199,19 @@ export default function NewOpportunityModal({
           </div>
 
           <div>
-            <label className="block text-[#16181D] font-medium mb-1 flex items-center gap-1">
-              <Globe className="w-3.5 h-3.5 text-[#6B7280]" />
-              <span>Source or Program URL</span>
-            </label>
+            <label className="block text-ink text-xs font-medium mb-1.5">Program link</label>
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com/apply"
-              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none font-mono text-xs"
+              placeholder="https://..."
+              className="w-full h-8 bg-surface border border-line-strong focus:border-ink rounded-md px-2.5 text-ink font-mono text-xs focus:outline-none placeholder:text-ink-3"
             />
           </div>
 
           {projects.length > 0 && (
             <div>
-              <label className="block text-[#16181D] font-medium mb-1">Link Arsenal Projects</label>
+              <label className="block text-ink text-xs font-medium mb-1.5">Link Arsenal project</label>
               <div className="flex flex-wrap gap-1.5">
                 {projects.map((p) => {
                   const active = selectedProjectIds.includes(p.id);
@@ -239,10 +220,10 @@ export default function NewOpportunityModal({
                       key={p.id}
                       type="button"
                       onClick={() => toggleProject(p.id)}
-                      className={`px-2.5 py-1 rounded font-mono text-xs border transition-colors ${
+                      className={`h-7 px-2 rounded-md font-mono text-xs border transition-colors ${
                         active
-                          ? 'bg-[#4355B9]/10 border-[#4355B9]/40 text-[#4355B9] font-medium'
-                          : 'bg-[#F5F5F3] border-[#E5E5E1] text-[#6B7280] hover:text-[#16181D]'
+                          ? 'bg-selected border-ink text-ink font-medium'
+                          : 'bg-surface border-line text-ink-3 hover:text-ink'
                       }`}
                     >
                       {active ? `✓ ${p.title}` : `+ ${p.title}`}
@@ -254,41 +235,35 @@ export default function NewOpportunityModal({
           )}
 
           <div>
-            <label className="block text-[#16181D] font-medium mb-1">First Sub-Task</label>
+            <label className="block text-ink text-xs font-medium mb-1.5">First sub-task</label>
             <input
               type="text"
               value={initialTask}
               onChange={(e) => setInitialTask(e.target.value)}
-              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none"
+              placeholder="e.g. Review submission deliverables"
+              className="w-full h-8 bg-surface border border-line-strong focus:border-ink rounded-md px-2.5 text-ink text-xs focus:outline-none placeholder:text-ink-3"
             />
           </div>
 
-          <div>
-            <label className="block text-[#16181D] font-medium mb-1">Application Pitch / Notes</label>
-            <textarea
-              rows={2}
-              value={applicationCopy}
-              onChange={(e) => setApplicationCopy(e.target.value)}
-              placeholder="Core thesis or application focus..."
-              className="w-full bg-[#F5F5F3] border border-[#E5E5E1] focus:bg-white focus:border-[#4355B9] rounded px-3 py-1.5 text-[#16181D] focus:outline-none leading-relaxed"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E5E1]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 rounded-md bg-white border border-[#E5E5E1] text-[#6B7280] hover:text-[#16181D]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-1.5 rounded-md bg-[#4355B9] hover:bg-[#3848A3] text-white font-medium flex items-center gap-1.5 shadow-2xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create Track</span>
-            </button>
+          <div className="flex items-center justify-between pt-3 border-t border-line">
+            <span className="font-mono text-[11px] text-ink-3">
+              Esc to cancel
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-[30px] px-3 rounded-md border border-line-strong bg-surface hover:bg-hover text-ink text-xs font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="h-[30px] px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-text text-xs font-medium transition-colors"
+              >
+                Create track
+              </button>
+            </div>
           </div>
         </form>
       </div>
