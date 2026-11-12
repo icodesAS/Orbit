@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Eye, EyeOff, X } from 'lucide-react';
+import { Eye, EyeOff, X, ExternalLink } from 'lucide-react';
 import { DEFAULT_GEMINI_MODEL } from '@/lib/config';
 import CloudSyncSection from './CloudSyncSection';
 
@@ -191,6 +191,47 @@ export default function SettingsView({
         </div>
 
         {backupMessage && <div className="pt-2 font-mono text-[12px] text-ink-2">{backupMessage}</div>}
+      </section>
+
+      {/* About Orbit */}
+      <section className="space-y-3 pt-2">
+        <div>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em] text-ink">About Orbit</h2>
+          <p className="text-[13px] text-ink-3 mt-0.5">Open-source command center for opportunities, radar & project arsenal.</p>
+        </div>
+
+        <div className="rounded-[12px] bg-raised border border-line divide-y divide-line-faint px-4 py-1 text-[13px]">
+          <div className="py-3 flex items-center justify-between gap-4">
+            <span className="text-ink-2">Creator</span>
+            <a
+              href="https://github.com/icodesAS"
+              target="_blank"
+              rel="noreferrer"
+              className="text-ink font-medium hover:underline inline-flex items-center gap-1 font-mono text-[12px]"
+            >
+              <span>@icodesAS</span>
+              <ExternalLink className="w-3 h-3 text-ink-3" />
+            </a>
+          </div>
+
+          <div className="py-3 flex items-center justify-between gap-4">
+            <span className="text-ink-2">License</span>
+            <span className="font-mono text-[12px] text-ink">MIT License (Open Source)</span>
+          </div>
+
+          <div className="py-3 flex items-center justify-between gap-4">
+            <span className="text-ink-2">Source Code</span>
+            <a
+              href="https://github.com/icodesAS/Orbit"
+              target="_blank"
+              rel="noreferrer"
+              className="text-ink font-medium hover:underline inline-flex items-center gap-1 font-mono text-[12px]"
+            >
+              <span>github.com/icodesAS/Orbit</span>
+              <ExternalLink className="w-3 h-3 text-ink-3" />
+            </a>
+          </div>
+        </div>
       </section>
 
       {isGuest && confirmResetOpen && (
