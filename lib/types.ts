@@ -4,6 +4,10 @@ export type OpportunityStatus = 'active' | 'waitlist' | 'submitted' | 'archived'
 
 export type RadarPriority = '1A' | '1B' | '1C' | '2';
 
+export type RadarOpportunityFormat = 'fresh_build' | 'open_track' | 'unclear';
+
+export type RadarDeadlineConfidence = 'stated' | 'inferred' | 'unknown';
+
 export interface SubTask {
   id: string;
   title: string;
@@ -70,6 +74,8 @@ export interface RadarItem {
   priority: RadarPriority;
   verified: boolean; // only true after user opens source and marks verified
   promoted: boolean; // true when copied to opportunities
+  format?: RadarOpportunityFormat;
+  deadlineConfidence?: RadarDeadlineConfidence;
   recommendedProjectId?: string;
   createdAt: string;
 }

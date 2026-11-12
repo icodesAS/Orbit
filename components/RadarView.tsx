@@ -160,6 +160,8 @@ export default function RadarView({
                               <span className={`text-[14px] font-medium truncate ${item.promoted ? 'text-ink-3' : 'text-ink'}`}>{item.title}</span>
                               <span className="font-mono text-[12px] text-ink-3 truncate">{item.organization} · {domain}</span>
                               {recProject && <span className="chip hidden sm:inline-flex">fits: {recProject.title}</span>}
+                              {item.format === 'fresh_build' && <span className="chip hidden md:inline-flex">fresh build</span>}
+                              {item.format === 'open_track' && <span className="chip hidden md:inline-flex">open track</span>}
                             </div>
 
                             <div className="flex items-center gap-2.5 shrink-0">
@@ -191,9 +193,12 @@ export default function RadarView({
                                     {item.summary || 'Open the source link below to inspect full eligibility, timeline, and submission details.'}
                                   </p>
 
-                                  <div className="flex items-center gap-2 font-mono text-[12px] text-ink-3">
+                                  <div className="flex flex-wrap items-center gap-2 font-mono text-[12px] text-ink-3">
                                     <span className={`dot ${item.verified ? 'dot-ok' : openedUrls[item.id] ? 'dot-warn' : ''}`} />
                                     <span>{domain} · {item.verified ? 'verified' : openedUrls[item.id] ? 'source opened' : 'unverified'}</span>
+                                    {item.format === 'fresh_build' && <span>· fresh build sprint</span>}
+                                    {item.format === 'open_track' && <span>· open track / pre-built allowed</span>}
+                                    {item.deadlineConfidence === 'inferred' && <span>· deadline estimated</span>}
                                   </div>
 
                                   <div className="flex flex-wrap items-center gap-2 pt-1">

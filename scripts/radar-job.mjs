@@ -11,7 +11,30 @@ dotenv.config();
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
-import { RADAR_TIERS, buildRadarPrompt } from './radar-prompts.mjs';
+import {
+  RADAR_TIERS,
+  buildRadarDiscoveryPrompt,
+  buildRadarMatchingPrompt,
+} from './radar-prompts.mjs';
+
+async function isUrlAlive(rawUrl) {
+  try {
+    const res = await fetch(rawUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(4000),
+      redirect: 'follow',
+    });
+    if ([404, 410, 500, 502, 503].includes(res.status)) return false;
+    return true;
+  } catch {
+    // If timeout or network glitch, do not aggressively drop
+    return true;
+  }
+}
 
 function hashUrl(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string') return '';
@@ -129,8 +152,8 @@ async function runRadarJob() {
       console.log('   ⏳ Waiting 3s to respect free-tier rate limits...');
       await new Promise((r) => setTimeout(r, 3000));
     }
-    console.log(`\n📡 Querying Priority ${tier.priority}: ${tier.name}...`);
-    const prompt = buildRadarPrompt({ tier, arsenalProjects, seenUrls });
+    console.log(`\n📡 [Pass 1] Querying Priority ${tier.priority}: ${tier.name}...`);
+    const prompt = buildRadarDiscoveryPrompt({ tier, currentDateIso: todayDate, seenUrls });
 
     try {
       let response;
@@ -193,11 +216,35 @@ async function runRadarJob() {
           continue;
         }
 
+        // 1. Validate deadline & drop past deadlines
         let validDeadline = null;
         if (raw.deadline) {
           const d = new Date(String(raw.deadline).trim());
-          if (!isNaN(d.getTime())) validDeadline = d.toISOString();
+          if (!isNaN(d.getTime())) {
+            // Drop expired deadlines (older than 24 hours ago)
+            if (d.getTime() < Date.now() - 86400000) {
+              console.log(`   ↳ Skipping expired deadline (${raw.deadline}): "${raw.title}"`);
+              continue;
+            }
+            // Only set confirmed deadline if confidence is stated
+            if (raw.deadlineConfidence === 'stated') {
+              validDeadline = d.toISOString();
+            }
+          }
         }
+
+        // 2. Validate URL liveness (drop dead 404 / 500 links)
+        const isAlive = await isUrlAlive(cleanUrl);
+        if (!isAlive) {
+          console.log(`   ↳ Dropping dead URL (${cleanUrl}): "${raw.title}"`);
+          continue;
+        }
+
+        const validFormats = ['fresh_build', 'open_track', 'unclear'];
+        const format = validFormats.includes(raw.format) ? raw.format : 'unclear';
+        const deadlineConfidence = ['stated', 'inferred', 'unknown'].includes(raw.deadlineConfidence)
+          ? raw.deadlineConfidence
+          : validDeadline ? 'stated' : 'unknown';
 
         seenHashes.add(uHash);
         const itemId = `radar-${tier.priority.toLowerCase()}-${crypto.randomUUID()}`;
@@ -210,11 +257,13 @@ async function runRadarJob() {
           urlHash: uHash,
           summary: String(raw.summary || '').trim(),
           deadline: validDeadline,
+          deadlineConfidence,
+          format,
           source: String(raw.source || cleanUrl).trim(),
           priority: tier.priority,
           verified: false,
           promoted: false,
-          recommendedProjectId: raw.recommendedProjectId || null,
+          recommendedProjectId: null,
           createdAt: FieldValue.serverTimestamp(),
         };
 
@@ -222,9 +271,57 @@ async function runRadarJob() {
         sectionCount++;
         if (sectionCount >= 8) break;
       }
-      console.log(`   ✅ Accepted ${sectionCount} unique items for Priority ${tier.priority}.`);
+      console.log(`   ✅ Accepted ${sectionCount} verified items for Priority ${tier.priority}.`);
     } catch (err) {
       console.error(`   ❌ Error querying section ${tier.priority}:`, err.message);
+    }
+  }
+
+  // Pass 2: Lightweight Arsenal Project Matching (Non-grounded)
+  if (arsenalProjects.length > 0 && allCollectedItems.length > 0) {
+    console.log(`\n🎯 [Pass 2] Matching ${allCollectedItems.length} candidate items with ${arsenalProjects.length} Arsenal projects...`);
+    try {
+      const matchPrompt = buildRadarMatchingPrompt({
+        items: allCollectedItems.map((it) => ({
+          id: it.id,
+          title: it.title,
+          organization: it.organization,
+          summary: it.summary,
+          format: it.format,
+        })),
+        arsenalProjects: arsenalProjects.map((p) => ({
+          id: p.id,
+          title: p.title,
+          techStack: p.techStack,
+        })),
+      });
+
+      const matchRes = await ai.models.generateContent({
+        model: modelName,
+        contents: [{ role: 'user', parts: [{ text: matchPrompt }] }],
+      });
+
+      const matches = parseJsonArray(matchRes.text);
+      const validProjectIds = new Set(arsenalProjects.map((p) => p.id));
+      const matchMap = new Map();
+
+      for (const m of matches) {
+        if (m.itemId && m.recommendedProjectId && validProjectIds.has(m.recommendedProjectId)) {
+          matchMap.set(m.itemId, m.recommendedProjectId);
+        }
+      }
+
+      let matchCount = 0;
+      for (const item of allCollectedItems) {
+        if (matchMap.has(item.id)) {
+          item.recommendedProjectId = matchMap.get(item.id);
+          matchCount++;
+          console.log(`   ↳ Matched "${item.title}" -> Project: ${item.recommendedProjectId}`);
+        }
+      }
+      console.log(`   ✅ Assigned ${matchCount} verified project matches.`);
+    } catch (matchErr) {
+      console.warn('   ⚠️ Pass 2 matching skipped due to error:', matchErr.message);
     }
   }
 
