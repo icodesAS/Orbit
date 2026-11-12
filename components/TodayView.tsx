@@ -14,6 +14,7 @@ interface TodayViewProps {
   focusedId: string | null;
   unreviewedRadarCount: number;
   canUseAi?: boolean;
+  isSyncing?: boolean;
   onFocusOpportunity: (id: string) => void;
   onOpenAskAI: (opp: Opportunity) => void;
   onOpenEdit?: (opp: Opportunity) => void;
@@ -26,6 +27,7 @@ interface TodayViewProps {
 export default function TodayView({
   opportunities,
   unreviewedRadarCount,
+  isSyncing = false,
   onFocusOpportunity,
   onOpenEdit,
   onAdvanceStatus,
@@ -33,7 +35,8 @@ export default function TodayView({
   onJumpToPipeline,
   onOpenNewModal,
 }: TodayViewProps) {
-  const allWithDeadlines = opportunities
+  const visibleOpportunities = opportunities.filter((o) => o.status !== 'archived');
+  const allWithDeadlines = visibleOpportunities
     .filter((o) => (o.status === 'active' || o.status === 'waitlist') && o.deadline)
     .map((o) => ({
       opp: o,
@@ -105,7 +108,13 @@ export default function TodayView({
       )}
 
       {/* Empty State Variant 1: Empty Workspace */}
-      {opportunities.length === 0 ? (
+      {isSyncing && visibleOpportunities.length === 0 ? (
+        <div className="space-y-2 pt-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-[52px] rounded-[8px] bg-raised border border-line animate-pulse" />
+          ))}
+        </div>
+      ) : visibleOpportunities.length === 0 ? (
         <motion.div
           variants={stagger(0.06, 0.04)}
           initial="hidden"

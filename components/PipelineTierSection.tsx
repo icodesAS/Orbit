@@ -27,6 +27,7 @@ interface PipelineTierSectionProps {
   onToggleSubTask: (oppId: string, taskId: string) => void;
   onAddSubTask: (oppId: string, title: string) => void;
   onArchive: (id: string) => void;
+  onDelete?: (id: string) => void;
   onOpenNewModal?: () => void;
 }
 
@@ -80,6 +81,7 @@ export default function PipelineTierSection({
   onToggleSubTask,
   onAddSubTask,
   onArchive,
+  onDelete,
   onOpenNewModal,
 }: PipelineTierSectionProps) {
   const [isSectionOpen, setIsSectionOpen] = useState(true);
@@ -149,6 +151,7 @@ export default function PipelineTierSection({
                   onToggleSubTask={(taskId) => onToggleSubTask(opp.id, taskId)}
                   onAddSubTask={(taskTitle) => onAddSubTask(opp.id, taskTitle)}
                   onArchive={() => onArchive(opp.id)}
+                  onDelete={onDelete ? () => onDelete(opp.id) : undefined}
                 />
               ))}
             </div>

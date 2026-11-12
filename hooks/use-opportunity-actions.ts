@@ -40,16 +40,29 @@ export function useOpportunityActions({
   const handleArchive = useCallback((id: string) => {
     const opp = opportunities.find((o) => o.id === id);
     if (!opp) return;
-    updateOpportunities((prev) => prev.map((o) => o.id === id ? { ...o, status: 'archived' } : o));
+    const prevStatus = opp.status;
+    updateOpportunities((prev) =>
+      prev.map((o) => o.id === id ? { ...o, status: 'archived', updatedAt: new Date().toISOString() } : o)
+    );
     setUndoAction({
       id: `undo-${Date.now()}`,
       message: `Archived ${opp.code}`,
       timestamp: Date.now(),
       restore: () => {
-        updateOpportunities((prev) => prev.map((o) => o.id === id ? { ...o, status: opp.status } : o));
+        updateOpportunities((prev) =>
+          prev.map((o) => o.id === id ? { ...o, status: prevStatus, updatedAt: new Date().toISOString() } : o)
+        );
       },
     });
   }, [opportunities, setUndoAction, updateOpportunities]);
+
+  const handleRestoreOpportunity = useCallback((id: string) => {
+    const opp = opportunities.find((o) => o.id === id);
+    if (!opp) return;
+    updateOpportunities((prev) =>
+      prev.map((o) => o.id === id ? { ...o, status: 'active', updatedAt: new Date().toISOString() } : o)
+    );
+  }, [opportunities, updateOpportunities]);
 
   const handleToggleSubTask = useCallback((oppId: string, taskId: string) => {
     updateOpportunities((prev) =>
@@ -110,6 +123,7 @@ export function useOpportunityActions({
   return {
     handleAdvanceStatus,
     handleArchive,
+    handleRestoreOpportunity,
     handleToggleSubTask,
     handleAddSubTask,
     handleToggleProjectLink,

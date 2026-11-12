@@ -8,7 +8,13 @@ import {
   Auth,
   User,
 } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  Firestore,
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -22,7 +28,7 @@ const firebaseConfig = {
 export function isFirebaseConfigured(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
   );
 }
 
@@ -33,11 +39,7 @@ let db: Firestore | null = null;
 export function getFirebaseApp(): FirebaseApp | null {
   if (!isFirebaseConfigured()) return null;
   if (!app) {
-    if (getApps().length > 0) {
-      app = getApp();
-    } else {
-      app = initializeApp(firebaseConfig);
-    }
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   }
   return app;
 }
@@ -55,7 +57,19 @@ export function getFirebaseDb(): Firestore | null {
   const firebaseApp = getFirebaseApp();
   if (!firebaseApp) return null;
   if (!db) {
-    db = getFirestore(firebaseApp);
+    if (typeof window !== 'undefined') {
+      try {
+        db = initializeFirestore(firebaseApp, {
+          localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager(),
+          }),
+        });
+      } catch {
+        db = getFirestore(firebaseApp);
+      }
+    } else {
+      db = getFirestore(firebaseApp);
+    }
   }
   return db;
 }

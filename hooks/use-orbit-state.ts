@@ -13,6 +13,7 @@ import {
   subscribeProjects,
   subscribeRadarDays,
   saveOpportunityToFirestore,
+  deleteOpportunityFromFirestore,
   migrateLocalDataToFirestore,
 } from '@/lib/liveStore';
 
@@ -27,6 +28,7 @@ export function useOrbitState() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>(() => initialLocal.opportunities);
   const [projects, setProjects] = useState<ArsenalProject[]>(() => initialLocal.projects);
   const [radarDays, setRadarDays] = useState<RadarDay[]>(() => initialLocal.radarDays);
+  const [syncedUid, setSyncedUid] = useState<string | null>(null);
   const [userApiKey, setUserApiKey] = useState('');
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
@@ -38,8 +40,14 @@ export function useOrbitState() {
 
     const unsubOpps = subscribeOpportunities(
       uid,
-      (remoteOpps) => setOpportunities(remoteOpps),
-      (err) => setErrorToast(`Cloud sync error: ${err.message}`)
+      (remoteOpps) => {
+        setOpportunities(remoteOpps);
+        setSyncedUid(uid);
+      },
+      (err) => {
+        setSyncedUid(uid);
+        setErrorToast(`Cloud sync error: ${err.message}`);
+      }
     );
     const unsubProjs = subscribeProjects(
       uid,
@@ -58,6 +66,8 @@ export function useOrbitState() {
       unsubRadar();
     };
   }, [auth.user]);
+
+  const isCloudSyncing = auth.authLoading || (Boolean(auth.user) && syncedUid !== auth.user?.uid);
 
   const {
     projectsWithCounts, projectsMap, availableRadarDates,
@@ -86,10 +96,7 @@ export function useOrbitState() {
       return u;
     } catch (err: any) {
       const code = err?.code || '';
-      if (
-        code !== 'auth/popup-closed-by-user' &&
-        code !== 'auth/cancelled-popup-request'
-      ) {
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
         setErrorToast(err?.message || 'Google sign-in failed. Please try again.');
       }
       return null;
@@ -98,6 +105,7 @@ export function useOrbitState() {
 
   const handleSignOut = useCallback(async () => {
     await auth.signOut();
+    setSyncedUid(null);
     setOpportunities([]);
     setProjects([]);
     setRadarDays([]);
@@ -116,7 +124,15 @@ export function useOrbitState() {
           return prevOpp !== opp;
         });
         if (changed.length > 0) {
-          Promise.all(changed.map((opp) => saveOpportunityToFirestore(uid, opp))).catch((err) => {
+          Promise.all(
+            changed.map((opp) => {
+              const prevOpp = prevSnapshot.find((p) => p.id === opp.id);
+              return saveOpportunityToFirestore(uid, opp, {
+                syncTasks: !prevOpp || prevOpp.tasks !== opp.tasks,
+                syncChat: !prevOpp || prevOpp.aiChat !== opp.aiChat,
+              });
+            })
+          ).catch((err) => {
             setOpportunities(prevSnapshot);
             setErrorToast(`Sync error. Changes reverted: ${err.message}`);
           });
@@ -131,6 +147,7 @@ export function useOrbitState() {
   const {
     handleAdvanceStatus,
     handleArchive,
+    handleRestoreOpportunity,
     handleToggleSubTask,
     handleAddSubTask,
     handleToggleProjectLink,
@@ -140,7 +157,10 @@ export function useOrbitState() {
     setOpportunities((prevSnapshot) => {
       const next = [newOpp, ...prevSnapshot];
       if (auth.user) {
-        saveOpportunityToFirestore(auth.user.uid, newOpp).catch((err) => {
+        saveOpportunityToFirestore(auth.user.uid, newOpp, {
+          syncTasks: newOpp.tasks.length > 0,
+          syncChat: false,
+        }).catch((err) => {
           setOpportunities(prevSnapshot);
           setErrorToast(`Failed to save opportunity: ${err.message}`);
         });
@@ -157,6 +177,40 @@ export function useOrbitState() {
     );
   }, [updateOpportunities]);
 
+  const handleDeleteOpportunity = useCallback((id: string) => {
+    const target = opportunities.find((o) => o.id === id);
+    if (!target) return;
+    const prevSnapshot = opportunities;
+    const next = opportunities.filter((o) => o.id !== id);
+    setOpportunities(next);
+
+    if (auth.user) {
+      const uid = auth.user.uid;
+      deleteOpportunityFromFirestore(uid, id).catch((err) => {
+        setOpportunities(prevSnapshot);
+        setErrorToast(`Failed to delete track: ${err.message}`);
+      });
+    } else {
+      store.saveOpportunities(next);
+    }
+
+    setUndoAction({
+      id: `undo-del-${Date.now()}`,
+      message: `Deleted ${target.code}`,
+      timestamp: Date.now(),
+      restore: () => {
+        setOpportunities((curr) => [target, ...curr]);
+        if (auth.user) {
+          saveOpportunityToFirestore(auth.user.uid, target).catch((err) => {
+            setErrorToast(`Failed to restore track: ${err.message}`);
+          });
+        } else {
+          store.saveOpportunities([target, ...next]);
+        }
+      },
+    });
+  }, [auth.user, opportunities, store]);
+
   const {
     handlePromoteRadarItem,
     handleToggleVerifyRadarItem,
@@ -164,18 +218,9 @@ export function useOrbitState() {
     handleUpdateProject,
     handleDeleteProject,
   } = useProjectRadarActions({
-    user: auth.user,
-    store,
-    opportunities,
-    projects,
-    activeDay,
-    nextCodeNumber,
-    setProjects,
-    setRadarDays,
-    setUndoAction,
-    setErrorToast,
-    updateOpportunities,
-    handleCreateOpportunity,
+    user: auth.user, store, opportunities, projects, activeDay, nextCodeNumber,
+    setProjects, setRadarDays, setUndoAction, setErrorToast,
+    updateOpportunities, handleCreateOpportunity,
   });
 
   const handleImportLocalToAccount = useCallback(async () => {
@@ -197,12 +242,7 @@ export function useOrbitState() {
   }, [auth.user, store]);
 
   const handleResetGuestData = useCallback(() => {
-    if (auth.user) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('Reset guest data ignored while signed in.');
-      }
-      return;
-    }
+    if (auth.user) return;
     store.clearLocalData();
     setOpportunities([]);
     setProjects([]);
@@ -238,14 +278,16 @@ export function useOrbitState() {
   }, [auth.user, opportunities, projects, store]);
 
   return {
-    isLoaded: true, opportunities, projects: projectsWithCounts, projectsMap, radarDays,
+    isLoaded: true, isCloudSyncing, opportunities, projects: projectsWithCounts, projectsMap, radarDays,
     activeRadarItems, selectedRadarDate, setSelectedRadarDate, availableRadarDates,
     counts, nextCodeNumber, userApiKey, setUserApiKey, isFirebaseReady: auth.isFirebaseReady,
     isGuestContinued, handleContinueAsGuest, user: auth.user, authLoading: auth.authLoading,
     signIn: handleSignIn, signOut: handleSignOut, errorToast, setErrorToast, undoAction, setUndoAction,
     updateOpportunities, handleCreateOpportunity, handleUpdateOpportunity, handleAdvanceStatus,
-    handleArchive, handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
+    handleArchive, handleRestoreOpportunity, handleDeleteOpportunity,
+    handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
     handlePromoteRadarItem, handleToggleVerifyRadarItem, handleAddProject, handleUpdateProject,
-    handleDeleteProject, handleImportLocalToAccount, handleClearLocalData, handleResetGuestData, handleExportJson, handleImportJson,
+    handleDeleteProject, handleImportLocalToAccount, handleClearLocalData, handleResetGuestData,
+    handleExportJson, handleImportJson,
   };
 }

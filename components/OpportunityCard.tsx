@@ -30,13 +30,14 @@ interface OpportunityCardProps {
   onToggleSubTask: (taskId: string) => void;
   onAddSubTask: (title: string) => void;
   onArchive: () => void;
+  onDelete?: () => void;
 }
 
 export default function OpportunityCard({
   opportunity, allProjects, isFocused, isExpanded, isProjectPickerOpen,
   canUseAi = false, onFocus, onToggleExpand, onOpenEdit,
   onToggleProjectPicker, onOpenAskAI, onAdvanceStatus,
-  onToggleProjectLink, onToggleSubTask, onAddSubTask, onArchive,
+  onToggleProjectLink, onToggleSubTask, onAddSubTask, onArchive, onDelete,
 }: OpportunityCardProps) {
   const [projectQuery, setProjectQuery] = useState('');
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -243,6 +244,7 @@ export default function OpportunityCard({
               onToggleSubTask={onToggleSubTask}
               onAddSubTask={onAddSubTask}
               onArchive={onArchive}
+              onDelete={onDelete}
             />
           </motion.div>
         )}

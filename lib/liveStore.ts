@@ -24,53 +24,73 @@ export function subscribeOpportunities(
   return onSnapshot(
     oppsCol,
     async (snapshot) => {
-      const opps: Opportunity[] = [];
-      for (const d of snapshot.docs) {
-        const data = d.data() as Opportunity;
-        const tasksSnap = await getDocs(collection(db, 'users', userId, 'opportunities', d.id, 'tasks'));
-        const tasks: SubTask[] = tasksSnap.docs.map((td) => td.data() as SubTask);
-        tasks.sort((a, b) => a.sortOrder - b.sortOrder);
+      try {
+        const opps = await Promise.all(
+          snapshot.docs.map(async (d) => {
+            const data = d.data() as Opportunity;
+            const [tasksSnap, aiChatSnap] = await Promise.all([
+              getDocs(collection(db, 'users', userId, 'opportunities', d.id, 'tasks')),
+              getDocs(collection(db, 'users', userId, 'opportunities', d.id, 'aiChat')),
+            ]);
 
-        const aiChatSnap = await getDocs(collection(db, 'users', userId, 'opportunities', d.id, 'aiChat'));
-        const aiChat: AIChatMessage[] = aiChatSnap.docs.map((ad) => ad.data() as AIChatMessage);
-        aiChat.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            const tasks: SubTask[] = tasksSnap.docs.map((td) => td.data() as SubTask);
+            tasks.sort((a, b) => a.sortOrder - b.sortOrder);
 
-        opps.push({ ...data, id: d.id, tasks, aiChat });
+            const aiChat: AIChatMessage[] = aiChatSnap.docs.map((ad) => ad.data() as AIChatMessage);
+            aiChat.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+            return { ...data, id: d.id, tasks, aiChat };
+          })
+        );
+        opps.sort((a, b) => a.sortOrder - b.sortOrder);
+        onUpdate(opps);
+      } catch (err) {
+        if (onError && err instanceof Error) onError(err);
       }
-      opps.sort((a, b) => a.sortOrder - b.sortOrder);
-      onUpdate(opps);
     },
     onError
   );
 }
 
-export async function saveOpportunityToFirestore(userId: string, opp: Opportunity): Promise<void> {
+export async function saveOpportunityToFirestore(
+  userId: string,
+  opp: Opportunity,
+  options: { syncTasks?: boolean; syncChat?: boolean } = { syncTasks: true, syncChat: true }
+): Promise<void> {
   const db = getDb();
   const oppRef = doc(db, 'users', userId, 'opportunities', opp.id);
   const { tasks, aiChat, ...rootData } = opp;
-  await setDoc(oppRef, rootData, { merge: true });
 
-  const tasksCol = collection(db, 'users', userId, 'opportunities', opp.id, 'tasks');
-  const existingTasksSnap = await getDocs(tasksCol);
-  const currentTaskIds = new Set(tasks.map((t) => t.id));
+  if (!options.syncTasks && !options.syncChat) {
+    await setDoc(oppRef, rootData, { merge: true });
+    return;
+  }
 
   const batch = writeBatch(db);
-  for (const d of existingTasksSnap.docs) {
-    if (!currentTaskIds.has(d.id)) batch.delete(d.ref);
-  }
-  for (const t of tasks) {
-    batch.set(doc(tasksCol, t.id), t, { merge: true });
+  batch.set(oppRef, rootData, { merge: true });
+
+  if (options.syncTasks) {
+    const tasksCol = collection(db, 'users', userId, 'opportunities', opp.id, 'tasks');
+    const existingTasksSnap = await getDocs(tasksCol);
+    const currentTaskIds = new Set(tasks.map((t) => t.id));
+    for (const d of existingTasksSnap.docs) {
+      if (!currentTaskIds.has(d.id)) batch.delete(d.ref);
+    }
+    for (const t of tasks) {
+      batch.set(doc(tasksCol, t.id), t, { merge: true });
+    }
   }
 
-  const aiChatCol = collection(db, 'users', userId, 'opportunities', opp.id, 'aiChat');
-  const existingChatSnap = await getDocs(aiChatCol);
-  const currentChatIds = new Set(aiChat.map((msg) => msg.id));
-
-  for (const d of existingChatSnap.docs) {
-    if (!currentChatIds.has(d.id)) batch.delete(d.ref);
-  }
-  for (const msg of aiChat) {
-    batch.set(doc(aiChatCol, msg.id), msg, { merge: true });
+  if (options.syncChat) {
+    const aiChatCol = collection(db, 'users', userId, 'opportunities', opp.id, 'aiChat');
+    const existingChatSnap = await getDocs(aiChatCol);
+    const currentChatIds = new Set(aiChat.map((msg) => msg.id));
+    for (const d of existingChatSnap.docs) {
+      if (!currentChatIds.has(d.id)) batch.delete(d.ref);
+    }
+    for (const msg of aiChat) {
+      batch.set(doc(aiChatCol, msg.id), msg, { merge: true });
+    }
   }
 
   await batch.commit();
@@ -80,10 +100,11 @@ export async function deleteOpportunityFromFirestore(userId: string, oppId: stri
   const db = getDb();
   const batch = writeBatch(db);
 
-  const tasksSnap = await getDocs(collection(db, 'users', userId, 'opportunities', oppId, 'tasks'));
+  const [tasksSnap, aiChatSnap] = await Promise.all([
+    getDocs(collection(db, 'users', userId, 'opportunities', oppId, 'tasks')),
+    getDocs(collection(db, 'users', userId, 'opportunities', oppId, 'aiChat')),
+  ]);
   tasksSnap.docs.forEach((d) => batch.delete(d.ref));
-
-  const aiChatSnap = await getDocs(collection(db, 'users', userId, 'opportunities', oppId, 'aiChat'));
   aiChatSnap.docs.forEach((d) => batch.delete(d.ref));
 
   batch.delete(doc(db, 'users', userId, 'opportunities', oppId));
@@ -124,14 +145,19 @@ export function subscribeRadarDays(
   return onSnapshot(
     collection(db, 'users', userId, 'radarDays'),
     async (snapshot) => {
-      const days: RadarDay[] = [];
-      for (const dayDoc of snapshot.docs) {
-        const dayData = dayDoc.data() as Omit<RadarDay, 'items'>;
-        const itemsSnap = await getDocs(collection(db, 'users', userId, 'radarDays', dayDoc.id, 'items'));
-        const items = itemsSnap.docs.map((idoc) => ({ ...idoc.data(), id: idoc.id }));
-        days.push({ ...dayData, date: dayDoc.id, items: items as RadarDay['items'] });
+      try {
+        const days = await Promise.all(
+          snapshot.docs.map(async (dayDoc) => {
+            const dayData = dayDoc.data() as Omit<RadarDay, 'items'>;
+            const itemsSnap = await getDocs(collection(db, 'users', userId, 'radarDays', dayDoc.id, 'items'));
+            const items = itemsSnap.docs.map((idoc) => ({ ...idoc.data(), id: idoc.id }));
+            return { ...dayData, date: dayDoc.id, items: items as RadarDay['items'] };
+          })
+        );
+        onUpdate(days);
+      } catch (err) {
+        if (onError && err instanceof Error) onError(err);
       }
-      onUpdate(days);
     },
     onError
   );
@@ -177,7 +203,11 @@ export async function migrateLocalDataToFirestore(
 ): Promise<{ oppsCount: number; projsCount: number }> {
   const db = getDb();
 
-  const existingOppsSnap = await getDocs(collection(db, 'users', userId, 'opportunities'));
+  const [existingOppsSnap, existingProjsSnap] = await Promise.all([
+    getDocs(collection(db, 'users', userId, 'opportunities')),
+    getDocs(collection(db, 'users', userId, 'projects')),
+  ]);
+
   const existingOppIds = new Set<string>();
   const existingUrlHashes = new Set<string>();
   existingOppsSnap.docs.forEach((d) => {
@@ -186,7 +216,6 @@ export async function migrateLocalDataToFirestore(
     if (uHash && typeof uHash === 'string') existingUrlHashes.add(uHash);
   });
 
-  const existingProjsSnap = await getDocs(collection(db, 'users', userId, 'projects'));
   const existingProjIds = new Set<string>();
   const existingProjTitles = new Set<string>();
   existingProjsSnap.docs.forEach((d) => {

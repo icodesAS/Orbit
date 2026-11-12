@@ -9,6 +9,7 @@ import MobileNavBar from './MobileNavBar';
 import SignInScreen from './SignInScreen';
 import TodayView from './TodayView';
 import PipelineTierSection from './PipelineTierSection';
+import ArchivedSection from './ArchivedSection';
 import RadarView from './RadarView';
 import ArsenalView from './ArsenalView';
 import SettingsView from './SettingsView';
@@ -24,14 +25,15 @@ import { dur, ease, fadeUp, spring, stagger } from '@/lib/motion';
 
 export default function OrbitWorkspace() {
   const {
-    opportunities, projects, projectsMap, activeRadarItems,
+    isCloudSyncing, opportunities, projects, projectsMap, activeRadarItems,
     selectedRadarDate, setSelectedRadarDate, availableRadarDates, counts,
     nextCodeNumber, userApiKey, setUserApiKey, isFirebaseReady,
     isGuestContinued, handleContinueAsGuest, user, authLoading,
     signIn, signOut, errorToast, setErrorToast, undoAction, setUndoAction,
     updateOpportunities, handleCreateOpportunity, handleUpdateOpportunity,
-    handleAdvanceStatus, handleArchive, handleToggleSubTask, handleAddSubTask,
-    handleToggleProjectLink, handlePromoteRadarItem, handleToggleVerifyRadarItem,
+    handleAdvanceStatus, handleArchive, handleRestoreOpportunity, handleDeleteOpportunity,
+    handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
+    handlePromoteRadarItem, handleToggleVerifyRadarItem,
     handleAddProject, handleUpdateProject, handleDeleteProject,
     handleImportLocalToAccount, handleClearLocalData, handleResetGuestData,
     handleExportJson, handleImportJson,
@@ -49,7 +51,9 @@ export default function OrbitWorkspace() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   const isMounted = useSyncExternalStore(() => () => {}, () => true, () => false);
-  const focusedId = selectedFocusedId || opportunities[0]?.id || null;
+  const visibleOpps = opportunities.filter((o) => o.status !== 'archived');
+  const archivedOpps = opportunities.filter((o) => o.status === 'archived');
+  const focusedId = selectedFocusedId || visibleOpps[0]?.id || null;
   const selectedAiOpp = opportunities.find((o) => o.id === selectedAiOppId) || null;
   const editingOpp = opportunities.find((o) => o.id === editingOppId) || null;
   const canUseAi = Boolean(user) || !isFirebaseReady;
@@ -176,7 +180,7 @@ export default function OrbitWorkspace() {
             {activeSection === 'today' && (
               <TodayView
                 opportunities={opportunities} projectsMap={projectsMap} focusedId={focusedId}
-                unreviewedRadarCount={counts.radarUnreviewed} canUseAi={canUseAi}
+                unreviewedRadarCount={counts.radarUnreviewed} canUseAi={canUseAi} isSyncing={isCloudSyncing}
                 onFocusOpportunity={setSelectedFocusedId} onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
                 onOpenEdit={(opp) => setEditingOppId(opp.id)} onAdvanceStatus={handleAdvanceStatus}
                 onJumpToRadar={() => setActiveSection('radar')} onJumpToPipeline={() => setActiveSection('pipeline')}
@@ -196,7 +200,13 @@ export default function OrbitWorkspace() {
                   </button>
                 </div>
 
-                {opportunities.length === 0 ? (
+                {isCloudSyncing && visibleOpps.length === 0 ? (
+                  <div className="space-y-2 pt-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-[44px] rounded-[8px] bg-raised border border-line animate-pulse" />
+                    ))}
+                  </div>
+                ) : visibleOpps.length === 0 ? (
                   <motion.div variants={stagger(0.06, 0.04)} initial="hidden" animate="show" className="min-h-[360px] rounded-[12px] dot-grid flex flex-col items-center justify-center text-center px-6 py-12 gap-3">
                     <motion.div variants={fadeUp}><OrbitGlyph size="lg" /></motion.div>
                     <motion.h2 variants={fadeUp} className="text-[15px] font-semibold text-ink tracking-[-0.01em] mt-1">Your pipeline is empty</motion.h2>
@@ -222,11 +232,18 @@ export default function OrbitWorkspace() {
                         onToggleProjectPicker={(id) => setActiveProjectPickerOppId((prev) => (prev === id ? null : id))}
                         onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)} onAdvanceStatus={handleAdvanceStatus}
                         onToggleProjectLink={handleToggleProjectLink} onToggleSubTask={handleToggleSubTask}
-                        onAddSubTask={handleAddSubTask} onArchive={handleArchive} onOpenNewModal={() => setIsNewModalOpen(true)}
+                        onAddSubTask={handleAddSubTask} onArchive={handleArchive} onDelete={handleDeleteOpportunity}
+                        onOpenNewModal={() => setIsNewModalOpen(true)}
                       />
                     ))}
                   </div>
                 )}
+
+                <ArchivedSection
+                  archivedOpportunities={archivedOpps}
+                  onRestore={handleRestoreOpportunity}
+                  onDeletePermanently={handleDeleteOpportunity}
+                />
               </div>
             )}
 
