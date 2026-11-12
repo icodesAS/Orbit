@@ -7,8 +7,9 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   parseValue, toValue, applyDay, setTime12, addCalendarDays,
   isSameCalendarDay, formatTriggerLabel, formatRelativeHint,
-  getMonthGrid, QUICK_PRESETS, TIME_PRESETS,
+  getMonthGrid, QUICK_PRESETS, parseHourInput, parseMinuteInput,
 } from '@/lib/deadline-picker-utils';
+import { DeadlineTimeSection } from './DeadlineTimeSection';
 import { dur, ease } from '@/lib/motion';
 
 export interface DeadlinePickerProps {
@@ -53,11 +54,19 @@ export function DeadlinePicker({
   const updatePosition = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const popoverH = 390; const popoverW = 304;
+    const popoverH = 410;
+    const popoverW = 304;
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const spaceBelow = vh - rect.bottom - 10;
+    const spaceAbove = rect.top - 10;
     let top = rect.bottom + 6;
-    if (window.innerHeight - rect.bottom < popoverH && rect.top > popoverH) top = Math.max(10, rect.top - popoverH - 6);
-    let left = rect.left;
-    if (left + popoverW > window.innerWidth - 10) left = Math.max(10, window.innerWidth - popoverW - 10);
+    if (spaceBelow < popoverH && spaceAbove > spaceBelow) {
+      top = Math.max(8, rect.top - popoverH - 6);
+    } else {
+      top = Math.max(8, Math.min(rect.bottom + 6, vh - popoverH - 8));
+    }
+    const left = Math.max(8, Math.min(rect.left, vw - popoverW - 8));
     setCoords({ top, left });
   };
 
@@ -116,15 +125,16 @@ export function DeadlinePicker({
   };
 
   const handleHourChange = (raw: string) => {
-    if (!parsed) return;
-    const num = parseInt(raw.replace(/\D/g, ''), 10);
-    if (!Number.isNaN(num)) onChange(toValue(setTime12(parsed, Math.max(1, Math.min(12, num)), minutes, isPm)));
+    if (parsed) onChange(toValue(setTime12(parsed, parseHourInput(raw, h12), minutes, isPm)));
   };
-
   const handleMinuteChange = (raw: string) => {
-    if (!parsed) return;
-    const num = parseInt(raw.replace(/\D/g, ''), 10);
-    if (!Number.isNaN(num)) onChange(toValue(setTime12(parsed, h12, Math.max(0, Math.min(59, num)), isPm)));
+    if (parsed) onChange(toValue(setTime12(parsed, h12, parseMinuteInput(raw, minutes), isPm)));
+  };
+  const handleHourStep = (d: number) => {
+    if (parsed) onChange(toValue(setTime12(parsed, h12 + d > 12 ? 1 : h12 + d < 1 ? 12 : h12 + d, minutes, isPm)));
+  };
+  const handleMinuteStep = (d: number) => {
+    if (parsed) onChange(toValue(setTime12(parsed, h12, (minutes + d + 60) % 60, isPm)));
   };
 
   const changeMonth = (delta: number) => {
@@ -194,7 +204,7 @@ export function DeadlinePicker({
                 initial={{ opacity: 0, scale: 0.98, y: 4 }}
                 animate={{ opacity: 1, scale: 1, y: 0, transition: { duration: dur.fast, ease: ease.out } }}
                 exit={{ opacity: 0, scale: 0.98, y: 2, transition: { duration: 0.1 } }}
-                className="w-[304px] rounded-[12px] bg-overlay border border-line shadow-[var(--shadow-pop)] overflow-hidden select-none"
+                className="w-[304px] max-h-[calc(100vh-20px)] rounded-[12px] bg-overlay border border-line shadow-[var(--shadow-pop)] overflow-y-auto select-none flex flex-col"
               >
                 <div className="px-3 pt-3 pb-2 flex flex-wrap gap-1.5">
                   {QUICK_PRESETS.map((pill) => {
@@ -249,36 +259,18 @@ export function DeadlinePicker({
 
                 <div className="h-px bg-line" />
 
-                <div className={`px-3 py-2.5 space-y-2 ${!parsed ? 'opacity-45 pointer-events-none' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-ink-3">{parsed ? 'TIME' : 'PICK A DATE FIRST'}</span>
-                    <div className="flex items-center gap-1">
-                      <input type="text" inputMode="numeric" aria-label="Hours" value={String(h12).padStart(2, '0')} onChange={(e) => handleHourChange(e.target.value)} className="input !w-10 !h-[28px] !px-1 text-center font-mono text-[12.5px]" />
-                      <span className="text-ink-3 font-mono text-xs">:</span>
-                      <input type="text" inputMode="numeric" aria-label="Minutes" value={String(minutes).padStart(2, '0')} onChange={(e) => handleMinuteChange(e.target.value)} className="input !w-10 !h-[28px] !px-1 text-center font-mono text-[12.5px]" />
-                      <div className="ml-1 flex p-0.5 rounded-[6px] bg-sunken border border-line">
-                        <button type="button" onClick={() => parsed && onChange(toValue(setTime12(parsed, h12, minutes, false)))} className={`px-1.5 h-[22px] rounded-[4px] font-mono text-[11px] transition-colors ${!isPm ? 'bg-overlay text-ink shadow-[var(--shadow-xs)] font-medium' : 'text-ink-3 hover:text-ink'}`}>AM</button>
-                        <button type="button" onClick={() => parsed && onChange(toValue(setTime12(parsed, h12, minutes, true)))} className={`px-1.5 h-[22px] rounded-[4px] font-mono text-[11px] transition-colors ${isPm ? 'bg-overlay text-ink shadow-[var(--shadow-xs)] font-medium' : 'text-ink-3 hover:text-ink'}`}>PM</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-1">
-                    {TIME_PRESETS.map((tp) => {
-                      const active = parsed && h12 === tp.h12 && minutes === tp.m && isPm === tp.pm;
-                      return (
-                        <button
-                          key={tp.label}
-                          type="button"
-                          onClick={() => onChange(toValue(setTime12(parsed ?? applyDay(null, new Date()), tp.h12, tp.m, tp.pm)))}
-                          className={`flex-1 h-6 rounded-[6px] font-mono text-[11px] transition-colors ${active ? 'bg-pressed text-ink font-medium' : 'text-ink-3 hover:bg-hover hover:text-ink'}`}
-                        >
-                          {tp.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <DeadlineTimeSection
+                  parsed={parsed}
+                  h12={h12}
+                  minutes={minutes}
+                  isPm={isPm}
+                  onHourChange={handleHourChange}
+                  onMinuteChange={handleMinuteChange}
+                  onHourStep={handleHourStep}
+                  onMinuteStep={handleMinuteStep}
+                  onToggleAmPm={(pm) => parsed && onChange(toValue(setTime12(parsed, h12, minutes, pm)))}
+                  onSelectPreset={(tp) => onChange(toValue(setTime12(parsed ?? applyDay(null, new Date()), tp.h12, tp.m, tp.pm)))}
+                />
 
                 <div className="px-3 py-2 bg-raised border-t border-line flex items-center justify-between gap-2">
                   <span className="font-mono text-[11.5px] text-ink-2 truncate">{parsed ? `${formatTriggerLabel(parsed)} · ${relText}` : 'No deadline'}</span>

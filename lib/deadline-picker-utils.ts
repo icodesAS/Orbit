@@ -142,3 +142,28 @@ export const TIME_PRESETS = [
   { label: '6:00 PM', h12: 6, m: 0, pm: true },
   { label: '11:59 PM', h12: 11, m: 59, pm: true },
 ] as const;
+
+export function parseHourInput(raw: string, currentH12: number): number {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return currentH12;
+  const num = parseInt(digits, 10);
+  if (num >= 1 && num <= 12) return num;
+  if (num > 12) {
+    const lastDigit = parseInt(digits.slice(-1), 10);
+    return lastDigit >= 1 ? lastDigit : 12;
+  }
+  return 12;
+}
+
+export function parseMinuteInput(raw: string, currentM: number): number {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return currentM;
+  const num = parseInt(digits, 10);
+  if (num >= 0 && num <= 59) return num;
+  if (num > 59) {
+    const last2 = parseInt(digits.slice(-2), 10);
+    return last2 <= 59 ? last2 : 59;
+  }
+  return 0;
+}
+
