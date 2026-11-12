@@ -88,12 +88,6 @@ export interface RadarDay {
   items: RadarItem[];
 }
 
-export interface SettingsProfile {
-  geminiModel: string;
-  timezone: string;
-  updatedAt: string;
-}
-
 export interface UndoAction {
   id: string;
   message: string;

@@ -3,20 +3,17 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Pencil, CheckCircle2, ExternalLink } from 'lucide-react';
-import { Opportunity, ArsenalProject } from '@/lib/types';
+import { Opportunity } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
+import { isValidHttpsUrl } from '@/lib/url';
 import { OrbitGlyph } from './OrbitGlyph';
 import { fadeUp, stagger } from '@/lib/motion';
 
 interface TodayViewProps {
   opportunities: Opportunity[];
-  projectsMap: Record<string, ArsenalProject>;
-  focusedId: string | null;
   unreviewedRadarCount: number;
-  canUseAi?: boolean;
   isSyncing?: boolean;
   onFocusOpportunity: (id: string) => void;
-  onOpenAskAI: (opp: Opportunity) => void;
   onOpenEdit?: (opp: Opportunity) => void;
   onAdvanceStatus: (id: string) => void;
   onJumpToRadar: () => void;
@@ -245,7 +242,7 @@ export default function TodayView({
                             onClick={(e) => e.stopPropagation()}
                             className="hidden group-hover:flex items-center gap-1 pl-2 bg-hover"
                           >
-                            {opp.url && (
+                            {opp.url && isValidHttpsUrl(opp.url) && (
                               <a
                                 href={opp.url}
                                 target="_blank"

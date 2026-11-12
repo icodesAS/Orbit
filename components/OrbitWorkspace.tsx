@@ -163,8 +163,7 @@ export default function OrbitWorkspace() {
         <Sidebar
           activeSection={activeSection} onSelectSection={setActiveSection} counts={counts}
           isSignedIn={Boolean(user)} userName={user?.displayName || user?.email}
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} onOpenNewModal={() => setIsNewModalOpen(true)}
-          onOpenShortcutsModal={() => setIsShortcutsOpen(true)}
+          onOpenNewModal={() => setIsNewModalOpen(true)}
         />
 
         <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-canvas">
@@ -182,12 +181,10 @@ export default function OrbitWorkspace() {
           >
             {activeSection === 'today' && (
               <TodayView
-                opportunities={opportunities} projectsMap={projectsMap} focusedId={focusedId}
-                unreviewedRadarCount={counts.radarUnreviewed} canUseAi={canUseAi} isSyncing={isCloudSyncing}
-                onFocusOpportunity={setSelectedFocusedId} onOpenAskAI={(opp) => setSelectedAiOppId(opp.id)}
-                onOpenEdit={(opp) => setEditingOppId(opp.id)} onAdvanceStatus={handleAdvanceStatus}
-                onJumpToRadar={() => setActiveSection('radar')} onJumpToPipeline={() => setActiveSection('pipeline')}
-                onOpenNewModal={() => setIsNewModalOpen(true)}
+                opportunities={opportunities} unreviewedRadarCount={counts.radarUnreviewed} isSyncing={isCloudSyncing}
+                onFocusOpportunity={setSelectedFocusedId} onOpenEdit={(opp) => setEditingOppId(opp.id)}
+                onAdvanceStatus={handleAdvanceStatus} onJumpToRadar={() => setActiveSection('radar')}
+                onJumpToPipeline={() => setActiveSection('pipeline')} onOpenNewModal={() => setIsNewModalOpen(true)}
               />
             )}
 

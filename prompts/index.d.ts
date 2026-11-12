@@ -35,7 +35,7 @@ export declare function buildRadarDiscoveryPrompt(params: BuildRadarDiscoveryPro
 export declare function buildRadarMatchingPrompt(params: BuildRadarMatchingPromptParams): string;
 export declare function buildRadarPrompt(params: {
   tier: RadarTierConfig;
-  arsenalProjects?: any[];
+  arsenalProjects?: Array<{ id: string; title: string; techStack?: string[] }>;
   seenUrls?: string[];
 }): string;
 
@@ -80,4 +80,3 @@ export declare const DEFAULT_ASK_RULES: string[];
 export declare function buildAskSystemInstruction(params: BuildAskSystemInstructionParams): string;
 export declare const RADAR_DISCOVERY_JSON_SCHEMA: string;
 export declare const RADAR_MATCH_JSON_SCHEMA: string;
-export declare const RADAR_ITEM_JSON_SCHEMA: string;

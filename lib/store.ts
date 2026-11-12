@@ -1,19 +1,55 @@
-import { ArsenalProject, Opportunity, RadarDay, SettingsProfile } from './types';
-import { DEFAULT_GEMINI_MODEL } from './config';
+import { ArsenalProject, Opportunity, RadarDay } from './types';
 
 const STORAGE_KEYS = {
   OPPORTUNITIES: 'orbit_guest_v1_opportunities',
   PROJECTS: 'orbit_guest_v1_projects',
   RADAR_DAYS: 'orbit_guest_v1_radardays',
-  SETTINGS: 'orbit_guest_v1_settings',
   GUEST_ACTIVE: 'orbit_guest_v1_active',
 };
+
+function notifyStorageError(err: unknown) {
+  if (typeof window === 'undefined') return;
+  const isQuota = err instanceof DOMException && (
+    err.code === 22 || err.code === 1014 ||
+    err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+  );
+  window.dispatchEvent(new CustomEvent('orbit:storage-error', {
+    detail: isQuota
+      ? 'Browser storage quota reached. Export your data or delete unused tracks.'
+      : 'Failed to save to local storage.',
+  }));
+}
+
+function sanitizeOpportunities(data: unknown): Opportunity[] {
+  if (!Array.isArray(data)) return [];
+  return data.filter((item): item is Opportunity => (
+    Boolean(item) && typeof item === 'object' &&
+    typeof item.id === 'string' && typeof item.title === 'string' &&
+    typeof item.type === 'string' && typeof item.status === 'string' &&
+    Array.isArray(item.tasks) && Array.isArray(item.projectIds)
+  ));
+}
+
+function sanitizeProjects(data: unknown): ArsenalProject[] {
+  if (!Array.isArray(data)) return [];
+  return data.filter((item): item is ArsenalProject => (
+    Boolean(item) && typeof item === 'object' &&
+    typeof item.id === 'string' && typeof item.title === 'string'
+  ));
+}
+
+function sanitizeRadarDays(data: unknown): RadarDay[] {
+  if (!Array.isArray(data)) return [];
+  return data.filter((item): item is RadarDay => (
+    Boolean(item) && typeof item === 'object' &&
+    typeof item.date === 'string' && Array.isArray(item.items)
+  ));
+}
 
 export interface OrbitStoreState {
   opportunities: Opportunity[];
   projects: ArsenalProject[];
   radarDays: RadarDay[];
-  settings: SettingsProfile;
 }
 
 export interface OrbitDataStore {
@@ -21,18 +57,9 @@ export interface OrbitDataStore {
   saveOpportunities: (opps: Opportunity[]) => void;
   saveProjects: (projs: ArsenalProject[]) => void;
   saveRadarDays: (days: RadarDay[]) => void;
-  saveSettings: (settings: SettingsProfile) => void;
   clearLocalData: () => void;
   isGuestSessionActive: () => boolean;
   setGuestSessionActive: (active: boolean) => void;
-}
-
-function getDefaultSettings(): SettingsProfile {
-  return {
-    geminiModel: DEFAULT_GEMINI_MODEL,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-    updatedAt: new Date().toISOString(),
-  };
 }
 
 class GuestStore implements OrbitDataStore {
@@ -41,24 +68,19 @@ class GuestStore implements OrbitDataStore {
       opportunities: [],
       projects: [],
       radarDays: [],
-      settings: getDefaultSettings(),
     };
 
-    if (typeof window === 'undefined') {
-      return defaultState;
-    }
+    if (typeof window === 'undefined') return defaultState;
 
     try {
       const storedOpps = localStorage.getItem(STORAGE_KEYS.OPPORTUNITIES);
       const storedProjs = localStorage.getItem(STORAGE_KEYS.PROJECTS);
       const storedRadar = localStorage.getItem(STORAGE_KEYS.RADAR_DAYS);
-      const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
 
       return {
-        opportunities: storedOpps ? JSON.parse(storedOpps) : [],
-        projects: storedProjs ? JSON.parse(storedProjs) : [],
-        radarDays: storedRadar ? JSON.parse(storedRadar) : [],
-        settings: storedSettings ? JSON.parse(storedSettings) : getDefaultSettings(),
+        opportunities: storedOpps ? sanitizeOpportunities(JSON.parse(storedOpps)) : [],
+        projects: storedProjs ? sanitizeProjects(JSON.parse(storedProjs)) : [],
+        radarDays: storedRadar ? sanitizeRadarDays(JSON.parse(storedRadar)) : [],
       };
     } catch {
       return defaultState;
@@ -69,8 +91,8 @@ class GuestStore implements OrbitDataStore {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.OPPORTUNITIES, JSON.stringify(opps));
-    } catch {
-      // Ignore storage quota errors
+    } catch (err) {
+      notifyStorageError(err);
     }
   }
 
@@ -78,8 +100,8 @@ class GuestStore implements OrbitDataStore {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projs));
-    } catch {
-      // Ignore storage quota errors
+    } catch (err) {
+      notifyStorageError(err);
     }
   }
 
@@ -87,17 +109,8 @@ class GuestStore implements OrbitDataStore {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.RADAR_DAYS, JSON.stringify(days));
-    } catch {
-      // Ignore storage quota errors
-    }
-  }
-
-  saveSettings(settings: SettingsProfile): void {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    } catch {
-      // Ignore storage quota errors
+    } catch (err) {
+      notifyStorageError(err);
     }
   }
 
@@ -118,8 +131,8 @@ class GuestStore implements OrbitDataStore {
       if (localStorage.getItem(STORAGE_KEYS.GUEST_ACTIVE) === 'true') return true;
       const opps = localStorage.getItem(STORAGE_KEYS.OPPORTUNITIES);
       const projs = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      if (opps && JSON.parse(opps).length > 0) return true;
-      if (projs && JSON.parse(projs).length > 0) return true;
+      if (opps && sanitizeOpportunities(JSON.parse(opps)).length > 0) return true;
+      if (projs && sanitizeProjects(JSON.parse(projs)).length > 0) return true;
       return false;
     } catch {
       return false;
@@ -138,14 +151,6 @@ class GuestStore implements OrbitDataStore {
       // Ignore storage errors
     }
   }
-}
-
-export function isFirebaseConfigured(): boolean {
-  if (typeof process === 'undefined') return false;
-  return Boolean(
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-  );
 }
 
 export function getOrbitStore(): OrbitDataStore {

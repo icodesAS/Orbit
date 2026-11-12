@@ -9,3 +9,5 @@ docs/
 AGENTS.md
 .playwright-mcp/
 service-account*.json
+*.tsbuildinfo
+next-env.d.ts

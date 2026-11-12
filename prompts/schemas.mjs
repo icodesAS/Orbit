@@ -21,6 +21,3 @@ export const RADAR_MATCH_JSON_SCHEMA = `[
     "recommendedProjectId": "exact-arsenal-project-id or null"
   }
 ]`;
-
-// Backward compatibility alias
-export const RADAR_ITEM_JSON_SCHEMA = RADAR_DISCOVERY_JSON_SCHEMA;

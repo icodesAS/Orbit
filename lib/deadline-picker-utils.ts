@@ -79,7 +79,7 @@ export function isSameCalendarDay(a: Date | null, b: Date | null): boolean {
   );
 }
 
-export function differenceInCalendarDays(target: Date, now: Date): number {
+function differenceInCalendarDays(target: Date, now: Date): number {
   const tStart = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
   const nStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   return Math.round((tStart - nStart) / 86_400_000);
@@ -108,7 +108,7 @@ export function formatTriggerLabel(d: Date): string {
   return `${datePart} · ${timePart}`;
 }
 
-export interface CalendarCell {
+interface CalendarCell {
   date: Date;
   inCurrentMonth: boolean;
   isToday: boolean;

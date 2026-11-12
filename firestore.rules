@@ -19,16 +19,16 @@ service cloud.firestore {
         allow read, delete: if isOwner(userId);
         allow create, update: if isOwner(userId) && isValidOpportunity(request.resource.data);
 
-        match /{subcollection}/{docId} {
+        match /tasks/{taskId} {
+          allow read, write: if isOwner(userId);
+        }
+        match /aiChat/{chatId} {
           allow read, write: if isOwner(userId);
         }
       }
       match /projects/{projectId} {
         allow read, delete: if isOwner(userId);
         allow create, update: if isOwner(userId) && isValidProject(request.resource.data);
-      }
-      match /settings/{settingId} {
-        allow read, write: if isOwner(userId);
       }
       match /radarDays/{day} {
         allow read: if isOwner(userId);

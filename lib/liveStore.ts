@@ -4,13 +4,42 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseDb } from './firebase';
 import {
-  Opportunity, ArsenalProject, RadarDay, SettingsProfile, SubTask, AIChatMessage,
+  Opportunity, ArsenalProject, RadarDay, SubTask, AIChatMessage,
 } from './types';
 
 function getDb(): Firestore {
   const db = getFirebaseDb();
   if (!db) throw new Error('Firestore is not configured. Check Firebase environment variables.');
   return db;
+}
+
+class ChunkedBatch {
+  private batch = writeBatch(this.db);
+  private opCount = 0;
+  constructor(private db: Firestore) {}
+
+  set(ref: any, data: any, options?: any) {
+    this.batch.set(ref, data, options);
+    this.opCount++;
+  }
+  delete(ref: any) {
+    this.batch.delete(ref);
+    this.opCount++;
+  }
+  async commitStep(limit = 400) {
+    if (this.opCount >= limit) {
+      await this.batch.commit();
+      this.batch = writeBatch(this.db);
+      this.opCount = 0;
+    }
+  }
+  async commit() {
+    if (this.opCount > 0) {
+      await this.batch.commit();
+      this.batch = writeBatch(this.db);
+      this.opCount = 0;
+    }
+  }
 }
 
 export function subscribeOpportunities(
@@ -77,7 +106,7 @@ export async function saveOpportunityToFirestore(
     return;
   }
 
-  const batch = writeBatch(db);
+  const batch = new ChunkedBatch(db);
   batch.set(oppRef, rootData, { merge: true });
 
   if (options.syncTasks) {
@@ -85,10 +114,11 @@ export async function saveOpportunityToFirestore(
     const existingTasksSnap = await getDocs(tasksCol);
     const currentTaskIds = new Set(tasks.map((t) => t.id));
     for (const d of existingTasksSnap.docs) {
-      if (!currentTaskIds.has(d.id)) batch.delete(d.ref);
+      if (!currentTaskIds.has(d.id)) { batch.delete(d.ref); await batch.commitStep(); }
     }
     for (const t of tasks) {
       batch.set(doc(tasksCol, t.id), t, { merge: true });
+      await batch.commitStep();
     }
   }
 
@@ -97,10 +127,11 @@ export async function saveOpportunityToFirestore(
     const existingChatSnap = await getDocs(aiChatCol);
     const currentChatIds = new Set(aiChat.map((msg) => msg.id));
     for (const d of existingChatSnap.docs) {
-      if (!currentChatIds.has(d.id)) batch.delete(d.ref);
+      if (!currentChatIds.has(d.id)) { batch.delete(d.ref); await batch.commitStep(); }
     }
     for (const msg of aiChat) {
       batch.set(doc(aiChatCol, msg.id), msg, { merge: true });
+      await batch.commitStep();
     }
   }
 
@@ -109,14 +140,14 @@ export async function saveOpportunityToFirestore(
 
 export async function deleteOpportunityFromFirestore(userId: string, oppId: string): Promise<void> {
   const db = getDb();
-  const batch = writeBatch(db);
+  const batch = new ChunkedBatch(db);
 
   const [tasksSnap, aiChatSnap] = await Promise.all([
     getDocs(collection(db, 'users', userId, 'opportunities', oppId, 'tasks')),
     getDocs(collection(db, 'users', userId, 'opportunities', oppId, 'aiChat')),
   ]);
-  tasksSnap.docs.forEach((d) => batch.delete(d.ref));
-  aiChatSnap.docs.forEach((d) => batch.delete(d.ref));
+  for (const d of tasksSnap.docs) { batch.delete(d.ref); await batch.commitStep(); }
+  for (const d of aiChatSnap.docs) { batch.delete(d.ref); await batch.commitStep(); }
 
   batch.delete(doc(db, 'users', userId, 'opportunities', oppId));
   await batch.commit();
@@ -196,42 +227,19 @@ export function subscribeRadarDays(
 }
 
 export async function updateRadarItemFlagsInFirestore(
-  userId: string,
-  dayDate: string,
-  itemId: string,
+  userId: string, dayDate: string, itemId: string,
   flags: { promoted?: boolean; verified?: boolean }
 ): Promise<void> {
   const db = getDb();
-  const itemRef = doc(db, 'users', userId, 'radarDays', dayDate, 'items', itemId);
   const updatePayload: Record<string, boolean> = {};
   if (flags.promoted !== undefined) updatePayload.promoted = flags.promoted;
   if (flags.verified !== undefined) updatePayload.verified = flags.verified;
-  await updateDoc(itemRef, updatePayload);
-}
-
-export function subscribeSettings(
-  userId: string,
-  onUpdate: (settings: SettingsProfile) => void,
-  onError?: (err: Error) => void
-): () => void {
-  const db = getDb();
-  return onSnapshot(
-    doc(db, 'users', userId, 'settings', 'profile'),
-    (snapshot) => {
-      if (snapshot.exists()) onUpdate(snapshot.data() as SettingsProfile);
-    },
-    onError
-  );
-}
-
-export async function saveSettingsToFirestore(userId: string, settings: SettingsProfile): Promise<void> {
-  const db = getDb();
-  await setDoc(doc(db, 'users', userId, 'settings', 'profile'), settings, { merge: true });
+  await updateDoc(doc(db, 'users', userId, 'radarDays', dayDate, 'items', itemId), updatePayload);
 }
 
 export async function migrateLocalDataToFirestore(
   userId: string,
-  data: { opportunities: Opportunity[]; projects: ArsenalProject[]; settings?: SettingsProfile }
+  data: { opportunities: Opportunity[]; projects: ArsenalProject[] }
 ): Promise<{ oppsCount: number; projsCount: number }> {
   const db = getDb();
 
@@ -249,32 +257,39 @@ export async function migrateLocalDataToFirestore(
   });
 
   const existingProjIds = new Set<string>();
-  const existingProjTitles = new Set<string>();
+  const existingProjTitleMap = new Map<string, string>();
   existingProjsSnap.docs.forEach((d) => {
     existingProjIds.add(d.id);
     const title = d.data().title;
-    if (title && typeof title === 'string') existingProjTitles.add(title.trim().toLowerCase());
+    if (title && typeof title === 'string') existingProjTitleMap.set(title.trim().toLowerCase(), d.id);
   });
+
+  const projectIdRemap = new Map<string, string>();
+  let projsCount = 0;
+  for (const proj of data.projects) {
+    const normTitle = proj.title.trim().toLowerCase();
+    const existingId = existingProjTitleMap.get(normTitle);
+    if (existingId) {
+      projectIdRemap.set(proj.id, existingId);
+      continue;
+    }
+    if (existingProjIds.has(proj.id)) continue;
+
+    await saveProjectToFirestore(userId, proj);
+    existingProjIds.add(proj.id);
+    existingProjTitleMap.set(normTitle, proj.id);
+    projsCount++;
+  }
 
   let oppsCount = 0;
   for (const opp of data.opportunities) {
     if (existingOppIds.has(opp.id) || (opp.urlHash && existingUrlHashes.has(opp.urlHash))) continue;
-    await saveOpportunityToFirestore(userId, opp);
+    const remappedProjectIds = opp.projectIds.map((pid) => projectIdRemap.get(pid) || pid);
+    await saveOpportunityToFirestore(userId, { ...opp, projectIds: remappedProjectIds });
     existingOppIds.add(opp.id);
     if (opp.urlHash) existingUrlHashes.add(opp.urlHash);
     oppsCount++;
   }
 
-  let projsCount = 0;
-  for (const proj of data.projects) {
-    const normTitle = proj.title.trim().toLowerCase();
-    if (existingProjIds.has(proj.id) || existingProjTitles.has(normTitle)) continue;
-    await saveProjectToFirestore(userId, proj);
-    existingProjIds.add(proj.id);
-    existingProjTitles.add(normTitle);
-    projsCount++;
-  }
-
-  if (data.settings) await saveSettingsToFirestore(userId, data.settings);
   return { oppsCount, projsCount };
 }

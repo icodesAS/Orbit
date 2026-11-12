@@ -109,7 +109,6 @@ export default function PipelineTierSection({
                   allProjects={allProjects}
                   isFocused={focusedId === opp.id}
                   isExpanded={Boolean(expandedMap[opp.id])}
-                  isSelectedForAI={selectedAiOppId === opp.id}
                   isProjectPickerOpen={activeProjectPickerOppId === opp.id}
                   canUseAi={canUseAi}
                   onFocus={() => onFocusOpportunity(opp.id)}

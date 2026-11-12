@@ -40,6 +40,15 @@ export function useOrbitState() {
   const [selectedRadarDate, setSelectedRadarDate] = useState<string>('');
 
   useEffect(() => {
+    const onStorageErr = (e: Event) => {
+      const msg = (e as CustomEvent<string>).detail;
+      setErrorToast(msg || 'Browser storage error.');
+    };
+    window.addEventListener('orbit:storage-error', onStorageErr);
+    return () => window.removeEventListener('orbit:storage-error', onStorageErr);
+  }, []);
+
+  useEffect(() => {
     if (!auth.user) return;
     const uid = auth.user.uid;
 
@@ -92,11 +101,7 @@ export function useOrbitState() {
     try {
       const u = await auth.signIn();
       if (u) {
-        setOpportunities([]);
-        setProjects([]);
-        setRadarDays([]);
-        setSelectedRadarDate('');
-        setUndoAction(null);
+        setOpportunities([]); setProjects([]); setRadarDays([]); setSelectedRadarDate(''); setUndoAction(null);
       }
       return u;
     } catch (err: any) {
@@ -110,13 +115,8 @@ export function useOrbitState() {
 
   const handleSignOut = useCallback(async () => {
     await auth.signOut();
-    setSyncedUid(null);
-    setOpportunities([]);
-    setProjects([]);
-    setRadarDays([]);
-    setUserApiKey('');
-    setSelectedRadarDate('');
-    setUndoAction(null);
+    setSyncedUid(null); setOpportunities([]); setProjects([]); setRadarDays([]);
+    setUserApiKey(''); setSelectedRadarDate(''); setUndoAction(null);
   }, [auth]);
 
   const updateOpportunities = useCallback((updater: (prev: Opportunity[]) => Opportunity[]) => {
@@ -139,9 +139,7 @@ export function useOrbitState() {
               syncChat: !prevOpp || prevOpp.aiChat !== opp.aiChat,
             });
           })
-        ).catch((err) => {
-          setErrorToast(`Sync error: ${err.message}`);
-        });
+        ).catch((err) => setErrorToast(`Sync error: ${err.message}`));
       }
     } else {
       store.saveOpportunities(next);
@@ -149,27 +147,18 @@ export function useOrbitState() {
   }, [auth.user, store]);
 
   const {
-    handleAdvanceStatus,
-    handleArchive,
-    handleRestoreOpportunity,
-    handleToggleSubTask,
-    handleAddSubTask,
-    handleToggleProjectLink,
-    handleAddMultipleSubTasks,
-    handleUpdateApplicationCopy,
+    handleAdvanceStatus, handleArchive, handleRestoreOpportunity,
+    handleToggleSubTask, handleAddSubTask, handleToggleProjectLink,
+    handleAddMultipleSubTasks, handleUpdateApplicationCopy,
   } = useOpportunityActions({ opportunities, updateOpportunities, setUndoAction });
 
   const handleCreateOpportunity = useCallback((newOpp: Opportunity) => {
-    const prevSnapshot = oppsRef.current;
-    const next = [newOpp, ...prevSnapshot];
+    const next = [newOpp, ...oppsRef.current];
     setOpportunities(next);
     if (auth.user) {
       saveOpportunityToFirestore(auth.user.uid, newOpp, {
-        syncTasks: newOpp.tasks.length > 0,
-        syncChat: false,
-      }).catch((err) => {
-        setErrorToast(`Failed to save opportunity: ${err.message}`);
-      });
+        syncTasks: newOpp.tasks.length > 0, syncChat: false,
+      }).catch((err) => setErrorToast(`Failed to save opportunity: ${err.message}`));
     } else {
       store.saveOpportunities(next);
     }
@@ -189,8 +178,7 @@ export function useOrbitState() {
     setOpportunities(next);
 
     if (auth.user) {
-      const uid = auth.user.uid;
-      deleteOpportunityFromFirestore(uid, id).catch((err) => {
+      deleteOpportunityFromFirestore(auth.user.uid, id).catch((err) => {
         setErrorToast(`Failed to delete track: ${err.message}`);
       });
     } else {
@@ -205,9 +193,7 @@ export function useOrbitState() {
         const restored = [target, ...oppsRef.current];
         setOpportunities(restored);
         if (auth.user) {
-          saveOpportunityToFirestore(auth.user.uid, target).catch((err) => {
-            setErrorToast(`Failed to restore track: ${err.message}`);
-          });
+          saveOpportunityToFirestore(auth.user.uid, target).catch((err) => setErrorToast(`Failed to restore track: ${err.message}`));
         } else {
           store.saveOpportunities(restored);
         }
@@ -216,11 +202,8 @@ export function useOrbitState() {
   }, [auth.user, store]);
 
   const {
-    handlePromoteRadarItem,
-    handleToggleVerifyRadarItem,
-    handleAddProject,
-    handleUpdateProject,
-    handleDeleteProject,
+    handlePromoteRadarItem, handleToggleVerifyRadarItem,
+    handleAddProject, handleUpdateProject, handleDeleteProject,
   } = useProjectRadarActions({
     user: auth.user, store, opportunities, projects, activeDay, nextCodeNumber,
     setProjects, setRadarDays, setUndoAction, setErrorToast,
@@ -231,26 +214,19 @@ export function useOrbitState() {
     if (!auth.user) throw new Error('Sign in required to import local data.');
     const local = store.loadState();
     return migrateLocalDataToFirestore(auth.user.uid, {
-      opportunities: local.opportunities,
-      projects: local.projects,
+      opportunities: local.opportunities, projects: local.projects,
     });
   }, [auth.user, store]);
 
   const handleClearLocalData = useCallback(() => {
     store.clearLocalData();
-    if (!auth.user) {
-      setOpportunities([]);
-      setProjects([]);
-      setRadarDays([]);
-    }
+    if (!auth.user) { setOpportunities([]); setProjects([]); setRadarDays([]); }
   }, [auth.user, store]);
 
   const handleResetGuestData = useCallback(() => {
     if (auth.user) return;
     store.clearLocalData();
-    setOpportunities([]);
-    setProjects([]);
-    setRadarDays([]);
+    setOpportunities([]); setProjects([]); setRadarDays([]);
   }, [auth.user, store]);
 
   const handleExportJson = useCallback(() => {
@@ -259,25 +235,34 @@ export function useOrbitState() {
 
   const handleImportJson = useCallback(async (rawText: string) => {
     const parsed = parseWorkspaceJson(rawText);
-    if (auth.user) {
-      return migrateLocalDataToFirestore(auth.user.uid, parsed);
-    }
+    if (auth.user) return migrateLocalDataToFirestore(auth.user.uid, parsed);
+
     const existingOppIds = new Set(opportunities.map((o) => o.id));
     const existingHashes = new Set(opportunities.map((o) => o.urlHash).filter(Boolean));
-    const newOpps = parsed.opportunities.filter(
-      (o) => !existingOppIds.has(o.id) && (!o.urlHash || !existingHashes.has(o.urlHash))
-    );
     const existingProjIds = new Set(projects.map((p) => p.id));
-    const existingTitles = new Set(projects.map((p) => p.title.trim().toLowerCase()));
-    const newProjs = parsed.projects.filter(
-      (p) => !existingProjIds.has(p.id) && !existingTitles.has(p.title.trim().toLowerCase())
-    );
+    const existingTitleMap = new Map(projects.map((p) => [p.title.trim().toLowerCase(), p.id]));
+    const projectIdRemap = new Map<string, string>();
+    const newProjs: ArsenalProject[] = [];
+
+    for (const p of parsed.projects) {
+      const normTitle = p.title.trim().toLowerCase();
+      const existingId = existingTitleMap.get(normTitle);
+      if (existingId) projectIdRemap.set(p.id, existingId);
+      else if (!existingProjIds.has(p.id)) {
+        newProjs.push(p); existingProjIds.add(p.id); existingTitleMap.set(normTitle, p.id);
+      }
+    }
+
+    const newOpps = parsed.opportunities
+      .filter((o) => !existingOppIds.has(o.id) && (!o.urlHash || !existingHashes.has(o.urlHash)))
+      .map((o) => ({
+        ...o, projectIds: o.projectIds.map((pid) => projectIdRemap.get(pid) || pid),
+      }));
+
     const mergedOpps = [...newOpps, ...opportunities];
     const mergedProjs = [...newProjs, ...projects];
-    setOpportunities(mergedOpps);
-    setProjects(mergedProjs);
-    store.saveOpportunities(mergedOpps);
-    store.saveProjects(mergedProjs);
+    setOpportunities(mergedOpps); setProjects(mergedProjs);
+    store.saveOpportunities(mergedOpps); store.saveProjects(mergedProjs);
     return { oppsCount: newOpps.length, projsCount: newProjs.length };
   }, [auth.user, opportunities, projects, store]);
 

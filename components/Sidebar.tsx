@@ -29,9 +29,7 @@ interface SidebarProps {
   };
   isSignedIn?: boolean;
   userName?: string | null;
-  onOpenCommandPalette: () => void;
   onOpenNewModal: () => void;
-  onOpenShortcutsModal: () => void;
 }
 
 export default function Sidebar({

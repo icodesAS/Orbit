@@ -17,7 +17,6 @@ interface OpportunityCardProps {
   allProjects: ArsenalProject[];
   isFocused: boolean;
   isExpanded: boolean;
-  isSelectedForAI: boolean;
   isProjectPickerOpen: boolean;
   canUseAi?: boolean;
   onFocus: () => void;

@@ -13,6 +13,8 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  terminate,
+  clearIndexedDbPersistence,
   Firestore,
 } from 'firebase/firestore';
 
@@ -36,7 +38,7 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 
-export function getFirebaseApp(): FirebaseApp | null {
+function getFirebaseApp(): FirebaseApp | null {
   if (!isFirebaseConfigured()) return null;
   if (!app) {
     app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -44,7 +46,7 @@ export function getFirebaseApp(): FirebaseApp | null {
   return app;
 }
 
-export function getFirebaseAuth(): Auth | null {
+function getFirebaseAuth(): Auth | null {
   const firebaseApp = getFirebaseApp();
   if (!firebaseApp) return null;
   if (!auth) {
@@ -85,10 +87,24 @@ export async function signInWithGoogle(): Promise<User | null> {
   return result.user;
 }
 
+export async function clearFirestorePersistence(): Promise<void> {
+  if (!db) return;
+  try {
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+  } catch {
+    // Ignore if persistence cleanup is not supported or locked
+  } finally {
+    db = null;
+  }
+}
+
 export async function signOutUser(): Promise<void> {
   const authInstance = getFirebaseAuth();
-  if (!authInstance) return;
-  await signOut(authInstance);
+  if (authInstance) {
+    await signOut(authInstance);
+  }
+  await clearFirestorePersistence();
 }
 
 export function onAuthChange(callback: (user: User | null) => void): () => void {
