@@ -2,7 +2,7 @@
 
 **Personal Opportunity Pipeline, Daily Radar & Project Arsenal Workspace**
 
-A calm, keyboard-first workspace for tracking high-leverage opportunities (fellowships, residencies, campus ambassador roles, hackathons, grants, and developer perks), linking them to your project portfolio (Arsenal), and reviewing automated daily discovery digests.
+A calm, keyboard-first workspace for tracking high-leverage opportunities (fellowships, residencies, campus ambassador roles, hackathons, grants, and developer perks), linking them to your project portfolio (Arsenal), and reviewing automated daily discovery digests powered by a two-pass AI discovery engine and intelligent co-pilot assistant.
 
 ---
 
@@ -26,10 +26,131 @@ Read-only daily discovery feed categorized into four priority tiers:
 - **1C** — Hackathons / Internships
 - **2** — Free Credits / Developer Perks
 
+Each discovered item includes:
+- **Deadline Confidence**: `stated` (explicit date found), `inferred` (approximate round deadline), or `unknown`
+- **Format**: `fresh_build` (build from scratch), `open_track` (existing projects accepted), or `unclear`
+- **Recommended Project Fit**: AI-matched Arsenal projects when applicable
+
 All Radar items start unverified. Source-first verification requires opening the source link before enabling **Mark verified**. Deadline-confirmed promotion via **Track** copies items into the Pipeline with an editable deadline form.
 
 ### Arsenal
 Structured repository of your flagship projects, tech stacks, links, and reusable context blurbs that attach to pipeline applications and ground the Ask AI assistant.
+
+---
+
+## Centralized Prompt Engine (`/prompts`)
+
+Orbit's AI system is powered by a **modular prompt engine** that lives in `/prompts/` — the single source of truth for all AI system prompts, tier definitions, and response schemas.
+
+### Why `/prompts/` Matters for Forkers
+
+If you fork Orbit to customize discovery focus, AI tone, or tier definitions, **edit prompts here** rather than touching backend route handlers or Firebase auth code. The engine decouples AI logic from infrastructure.
+
+**Structure:**
+- **`radar.mjs`**: Morning Radar configuration, 4 priority tier definitions, discovery prompts, and project-matching prompts
+- **`ask.mjs`**: Ask AI system instruction builders, contextual opportunity prompts, and 5 action chip presets
+- **`schemas.mjs`**: Expected JSON schemas and parsing contracts for Gemini outputs
+- **`index.mjs`**: Aggregated entry point for both Next.js App Router and standalone Node.js scripts
+- **`index.d.ts`**: TypeScript type declarations for full static analysis and autocomplete
+
+### Common Customizations
+
+**1. Customize Radar Focus or Tier Priorities**
+
+Open `prompts/radar.mjs` and edit `RADAR_TIERS`:
+```javascript
+{
+  priority: '1C',
+  name: 'Hackathons & Internships',
+  focus: 'Major global virtual or hybrid hackathons...',
+  examples: 'Devpost, Devfolio, ETHGlobal, Google Summer of Code...'
+}
+```
+
+Add specific search directives (e.g., prioritize specific platforms, regions, or virtual formats).
+
+**2. Customize Ask AI Persona or Advice Style**
+
+Open `prompts/ask.mjs` and adjust `DEFAULT_ASK_RULES` or `buildAskSystemInstruction`:
+```javascript
+export const DEFAULT_ASK_RULES = [
+  'Be concise, technical, and immediately actionable.',
+  'Never invent fake metrics, benchmarks, or projects...',
+];
+```
+
+Change tone (more formal, VC pitch-focused) or default checklist templates.
+
+---
+
+## Two-Pass Radar Discovery Architecture
+
+Orbit's Morning Radar job runs daily at `03:30 UTC` via GitHub Actions, executing a **two-pass discovery and matching pipeline**:
+
+### Pass 1: Pure Search-Grounded Discovery
+
+Completely **decoupled from Arsenal data** to eliminate topic search bias.
+
+**Process:**
+1. **Search Grounding**: 4 separate Gemini queries (one per tier) with Google Search grounding enabled
+2. **Dynamic Date Injection**: Current date automatically injected into prompts for deadline validation
+3. **Dead-Link Filtering**: HTTP health checks (`404`, `500`, `502`, `503` auto-dropped)
+4. **Expired Deadline Filtering**: Opportunities with deadlines older than 24 hours are skipped
+5. **Deduplication**: SHA-256 URL hash matching against the last 14 days
+
+**New Fields Extracted:**
+- `deadlineConfidence`: `stated` (explicit date found on official page), `inferred` (approximate round), or `unknown`
+- `format`: `fresh_build` (must build from scratch), `open_track` (accepts existing projects), or `unclear`
+
+Only opportunities with **validated URLs and confirmed deadlines** (when `deadlineConfidence === 'stated'`) are stored.
+
+### Pass 2: Lightweight Arsenal Matching
+
+**Non-grounded** second pass matches discovered items against your Arsenal projects.
+
+**Process:**
+1. Reads all discovered items from Pass 1
+2. Evaluates technical stack fit against Arsenal project titles, tech stacks, and descriptions
+3. **Strict in-code ID validation**: Only assigns `recommendedProjectId` if it exactly matches an existing Arsenal project ID (prevents hallucinated project IDs)
+4. For `fresh_build` opportunities: only matches Arsenal projects if demonstrated domain expertise provides competitive advantage
+5. For `open_track` opportunities or grants: matches the most relevant existing project
+
+**Result:** Each Radar item gets an optional `recommendedProjectId` linking it to your Arsenal, with zero false recommendations.
+
+---
+
+## Ask AI Co-Pilot & Action Chips
+
+Ask AI is a **scoped, high-leverage co-pilot** that operates within individual opportunities and their linked Arsenal projects. It is **not** a general chatbot — it provides tactical advice for building, pitching, and shipping applications.
+
+### 5 Action Chips
+
+Pre-configured prompts for common workflows:
+
+| Chip | Purpose | Output |
+|:-----|:--------|:-------|
+| **Ideate Fresh Build** | Brainstorm 3 novel 48h MVPs tailored to hackathon sponsor tracks & bounties | Technical value propositions, recommended stacks, and sponsor track fit |
+| **Project Fit Check** | Evaluate feature deltas to adapt linked Arsenal projects | Specific integration points, required pivots, and competitive gaps |
+| **Rubric Gap Analysis** | Audit against judging criteria and identify weak spots | 3 immediate fixes for technical complexity, presentation, and relevance |
+| **Generate Milestones** | Output chronological checklist deliverables leading to deadline | Formatted as `- [ ] Task` for 1-click import |
+| **Draft Pitch** | Write clean, technical application copy (problem, architecture, impact) | Punchy elevator pitch free of marketing fluff |
+
+### 1-Click Apply Preview
+
+When Ask AI generates milestone checklists or pitch copy, Orbit surfaces a **preview modal** with granular control:
+
+**For Milestones:**
+- Parses `- [ ] Task` format from AI output
+- Displays selectable checklist with individual toggle controls
+- One-click import into opportunity sub-tasks (native Orbit checklist format)
+- **Zero silent writes**: User explicitly confirms which tasks to add
+
+**For Pitch Copy:**
+- Preview with inline editing
+- **Replace** existing application copy or **Append** to existing content
+- Manual confirmation required before syncing to opportunity record
+
+All AI suggestions remain **read-only** until the user explicitly applies them.
 
 ---
 
@@ -118,15 +239,27 @@ If no key is available (no browser key and server key not allowed), the API retu
 
 #### Step 4: Morning Radar Automation (GitHub Actions)
 
-The Morning Radar job runs daily at `03:30 UTC` via GitHub Actions in your fork. It performs 4 search-grounded Gemini queries (one per priority tier), reads your Arsenal projects for context matching, deduplicates against the last 14 days using SHA-256 URL hashes, and writes up to 8 items per tier directly to Firestore at `users/{TARGET_USER_ID}/radarDays/{date}`.
+The Morning Radar job runs daily at `03:30 UTC` via GitHub Actions in your fork. It performs a **two-pass discovery and matching pipeline** with strict validation.
 
 **How it works:**
 
-1. Runs 4 separate Gemini queries with Google Search grounding (1A, 1B, 1C, 2)
-2. Reads your Arsenal projects to match and recommend relevant project links
-3. Deduplicates against the last 14 days of radar history using SHA-256 URL hashes
-4. Writes the new digest directly to your Firestore database using Firebase Admin credentials
-5. Enforces a hard cap of **max 8 items per section** to prevent runaway API costs
+**Pass 1: Pure Search-Grounded Discovery**
+1. Runs 4 separate Gemini queries with Google Search grounding (one per priority tier: 1A, 1B, 1C, 2)
+2. Injects current date dynamically for deadline validation
+3. Extracts `deadlineConfidence` (`stated` / `inferred` / `unknown`) and `format` (`fresh_build` / `open_track` / `unclear`)
+4. Filters out dead links via HTTP health checks (`404`, `500`, `502`, `503`)
+5. Drops opportunities with expired deadlines (older than 24 hours)
+6. Deduplicates against the last 14 days using SHA-256 URL hashes
+7. Enforces a hard cap of **max 8 items per tier**
+
+**Pass 2: Arsenal Project Matching**
+1. Reads your Arsenal projects (title, tech stack, description)
+2. Evaluates technical fit for each discovered opportunity
+3. Assigns `recommendedProjectId` only for validated Arsenal project IDs (prevents hallucinated recommendations)
+4. For `fresh_build` opportunities: matches projects only if domain expertise provides competitive advantage
+5. For `open_track` opportunities or grants: matches the most relevant existing project
+
+**Final Output:** Writes the complete digest to Firestore at `users/{TARGET_USER_ID}/radarDays/{date}` using Firebase Admin credentials.
 
 **Required GitHub Actions Repository Secrets:**
 
@@ -191,9 +324,9 @@ Multi-user isolation via `request.auth.uid == uid`. Radar items are read-only ex
 - **Framework:** Next.js 15 (App Router) + TypeScript 5
 - **Styling & Motion:** Tailwind CSS 4 + Framer Motion 12 (light theme, reduced-motion aware)
 - **UI Components:** Lucide React icons + class-variance-authority
-- **AI:** `@google/genai` with Google Search grounding
+- **AI:** `@google/genai` with Google Search grounding + centralized `/prompts` engine
 - **Backend:** Firebase Auth + Cloud Firestore + Firebase Admin SDK
-- **Automation:** GitHub Actions (scheduled cron)
+- **Automation:** GitHub Actions (scheduled cron with two-pass discovery pipeline)
 
 ---
 
