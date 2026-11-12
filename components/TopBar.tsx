@@ -4,6 +4,7 @@ import React from 'react';
 import { Search } from 'lucide-react';
 import { Opportunity } from '@/lib/types';
 import { getDeadlineInfo } from '@/lib/deadline';
+import { ThemeToggle } from './ThemeToggle';
 
 interface TopBarProps {
   opportunities: Opportunity[];
@@ -102,6 +103,9 @@ export default function TopBar({
             <span className="font-mono text-ink-3">none in 72h</span>
           )}
         </div>
+
+        <span className="hidden sm:inline h-3 w-px bg-line" aria-hidden="true" />
+        <ThemeToggle variant="icon" />
       </div>
     </header>
   );

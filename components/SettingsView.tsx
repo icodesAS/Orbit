@@ -5,6 +5,7 @@ import { Eye, EyeOff, X, ExternalLink } from 'lucide-react';
 import { DEFAULT_GEMINI_MODEL } from '@/lib/config';
 import CloudSyncSection from './CloudSyncSection';
 import { SocialLinks } from './SocialLinks';
+import AppearanceSection from './AppearanceSection';
 
 interface SettingsViewProps {
   userApiKey: string;
@@ -193,6 +194,9 @@ export default function SettingsView({
 
         {backupMessage && <div className="pt-2 font-mono text-[12px] text-ink-2">{backupMessage}</div>}
       </section>
+
+      {/* Appearance */}
+      <AppearanceSection />
 
       {/* About Orbit */}
       <section className="space-y-3 pt-2">
