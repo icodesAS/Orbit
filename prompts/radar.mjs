@@ -41,12 +41,21 @@ export function cleanPromptText(val, maxLen = 500) {
  * Pass 1: Pure Search-Grounded Discovery
  * Completely decoupled from Arsenal projects to prevent topic search bias.
  */
-export function buildRadarDiscoveryPrompt({ tier, currentDateIso, seenUrls = [] }) {
+export function buildRadarDiscoveryPrompt({ tier, currentDateIso, seenUrls = [], pipelineExclusions = [] }) {
   const dateStr = currentDateIso || new Date().toISOString().slice(0, 10);
 
-  const exclusions = seenUrls.length > 0
-    ? `Do NOT include any of the following already-seen URLs:\n${seenUrls.slice(0, 30).map((u) => `- ${cleanPromptText(u, 300)}`).join('\n')}\n`
+  const pipelineBlock = pipelineExclusions.length > 0
+    ? `ALREADY IN USER PIPELINE (ACTIVE OR DELIVERED — DO NOT RECOMMEND):\n${pipelineExclusions
+        .slice(0, 40)
+        .map((p) => `- "${cleanPromptText(p.title, 120)}"${p.url ? ` (${cleanPromptText(p.url, 250)})` : ''}`)
+        .join('\n')}\n\n`
     : '';
+
+  const recentBlock = seenUrls.length > 0
+    ? `RECENTLY DISCOVERED URLS (DO NOT REPEAT):\n${seenUrls.slice(0, 30).map((u) => `- ${cleanPromptText(u, 300)}`).join('\n')}\n`
+    : '';
+
+  const exclusions = `${pipelineBlock}${recentBlock}`;
 
   return `Discover and curate real, active, currently open or upcoming ${tier.name} opportunities as of ${dateStr}.
 

@@ -36,5 +36,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           TARGET_USER_ID: ${{ secrets.TARGET_USER_ID }}
-          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-3.5-flash' }}
+          GEMINI_FALLBACK_MODEL: ${{ secrets.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash' }}
         run: npm run radar

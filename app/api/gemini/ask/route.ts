@@ -204,16 +204,20 @@ export async function POST(req: NextRequest) {
         ...generatePayload,
       });
     } catch (primaryErr: any) {
-      const pMsg = primaryErr?.message || String(primaryErr);
-      const isTransient = pMsg.includes('503') || pMsg.includes('high demand') ||
-        pMsg.includes('404') || pMsg.includes('not found') || pMsg.includes('UNAVAILABLE') ||
-        pMsg.includes('timeout') || pMsg.includes('timed out');
+      const pMsg = (primaryErr?.message || String(primaryErr)).toLowerCase();
+      const isTransient = pMsg.includes('503') || pMsg.includes('504') ||
+        pMsg.includes('high demand') || pMsg.includes('deadline') ||
+        pMsg.includes('429') || pMsg.includes('resource_exhausted') ||
+        pMsg.includes('404') || pMsg.includes('not found') ||
+        pMsg.includes('unavailable') || pMsg.includes('timeout') ||
+        pMsg.includes('timed out') || pMsg.includes('abort');
 
       if (isTransient && primaryModel !== 'gemini-3.5-flash') {
-        console.warn(`[Gemini] ${primaryModel} failed (${pMsg}). Falling back to gemini-3.5-flash.`);
+        console.warn(`[Gemini] ${primaryModel} failed (${primaryErr?.message || String(primaryErr)}). Falling back to gemini-3.5-flash.`);
         response = await ai.models.generateContent({
           model: 'gemini-3.5-flash',
-          ...generatePayload,
+          contents,
+          config: { systemInstruction },
         });
       } else {
         throw primaryErr;

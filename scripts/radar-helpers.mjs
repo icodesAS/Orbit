@@ -73,9 +73,95 @@ export function initFirebaseAdmin() {
     try {
       sa = JSON.parse(sa);
     } catch {
-      break;
+      // Recover from double-quoted .env values with \" and expanded newlines
+      let normalized = sa;
+      if ((normalized.startsWith('"') && normalized.endsWith('"')) || (normalized.startsWith("'") && normalized.endsWith("'"))) {
+        normalized = normalized.slice(1, -1);
+      }
+      normalized = normalized
+        .replace(/\\"/g, '"')
+        .replace(/\\\r?\n/g, '\\n')
+        .replace(/\r?\n/g, '\\n');
+      try {
+        sa = JSON.parse(normalized);
+      } catch (err) {
+        throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT JSON: ${err.message}`);
+      }
     }
   }
 
+  if (!sa || typeof sa !== 'object' || !sa.project_id || !sa.private_key) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT must be a valid Firebase service account JSON object.');
+  }
+
+  if (typeof sa.private_key === 'string') {
+    sa.private_key = sa.private_key.replace(/\\n/g, '\n');
+  }
+
   return initializeApp({ credential: cert(sa) });
+}
+
+export async function generateWithFallback({
+  ai,
+  modelName,
+  fallbackModel,
+  prompt,
+  useSearch = false,
+  thinkingLevel,
+  onModelSwitch,
+  onSearchDisabled,
+}) {
+  let activeModel = modelName;
+  let activeThinking = thinkingLevel;
+  let attempts = 0;
+
+  while (attempts < 3) {
+    attempts++;
+    const config = {};
+    if (activeThinking) config.thinkingConfig = { thinkingLevel: activeThinking };
+    if (useSearch) config.tools = [{ googleSearch: {} }];
+
+    try {
+      return await ai.models.generateContent({
+        model: activeModel,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        ...(Object.keys(config).length > 0 ? { config } : {}),
+      });
+    } catch (err) {
+      const msg = err?.message || String(err);
+      const msgLower = msg.toLowerCase();
+
+      if (useSearch && (msgLower.includes('429') || msgLower.includes('resource_exhausted'))) {
+        console.log('   ℹ️ Search grounding rate-limited; retrying without search grounding...');
+        useSearch = false;
+        onSearchDisabled?.();
+        attempts--;
+        continue;
+      }
+
+      const isTimeout = msgLower.includes('504') || msgLower.includes('deadline') || msgLower.includes('timeout') || msgLower.includes('abort');
+      const isTransient = isTimeout || msgLower.includes('503') || msgLower.includes('high demand') ||
+        msgLower.includes('unavailable') || msgLower.includes('404') || msgLower.includes('not found') ||
+        msgLower.includes('resource_exhausted') || msgLower.includes('429');
+
+      if (isTransient && fallbackModel && activeModel !== fallbackModel) {
+        console.log(`   ⚠️ ${activeModel} failed (${msg.slice(0, 60)}); falling back to ${fallbackModel}...`);
+        activeModel = fallbackModel;
+        if (isTimeout && activeThinking !== 'LOW') activeThinking = 'LOW';
+        onModelSwitch?.(activeModel);
+        continue;
+      }
+      if (isTimeout && activeThinking && activeThinking !== 'LOW') {
+        console.log('   ⚠️ High thinking timed out; retrying with LOW reasoning...');
+        activeThinking = 'LOW';
+        continue;
+      }
+      if (attempts < 3 && isTransient) {
+        console.log(`   ⏳ Gemini busy (${msg.slice(0, 45)}...), retrying in 3s...`);
+        await new Promise((r) => setTimeout(r, 3000));
+        continue;
+      }
+      throw err;
+    }
+  }
 }

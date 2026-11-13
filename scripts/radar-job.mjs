@@ -20,6 +20,7 @@ import {
   hashUrl,
   parseJsonArray,
   initFirebaseAdmin,
+  generateWithFallback,
 } from './radar-helpers.mjs';
 
 async function runRadarJob() {
@@ -28,7 +29,7 @@ async function runRadarJob() {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   const userId = process.env.TARGET_USER_ID?.trim();
   const modelName = process.env.GEMINI_MODEL?.trim();
-  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL?.trim();
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL?.trim() || (modelName !== 'gemini-3.5-flash' ? 'gemini-3.5-flash' : '');
 
   if (!apiKey) throw new Error('GEMINI_API_KEY environment variable is required.');
   if (!userId) throw new Error('TARGET_USER_ID environment variable is required.');
@@ -46,12 +47,29 @@ async function runRadarJob() {
   const arsenalProjects = projectsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   console.log(`   Found ${arsenalProjects.length} Arsenal project(s).`);
 
-  // 2. Fetch past 14 days of radar items for urlHash deduplication
-  console.log('🔍 Fetching past 14-day history for deduplication...');
-  const pastDaysSnap = await db.collection(`users/${userId}/radarDays`).orderBy('date', 'desc').limit(14).get();
+  // 2. Fetch pipeline opportunities & past 14 days of radar items for deduplication
+  console.log('🔍 Fetching pipeline & past 14-day history for deduplication...');
   const seenHashes = new Set();
+  const seenTitles = new Set();
   const seenUrls = [];
+  const pipelineExclusions = [];
 
+  const oppsSnap = await db.collection(`users/${userId}/opportunities`).get();
+  for (const oppDoc of oppsSnap.docs) {
+    const data = oppDoc.data();
+    const title = String(data.title || '').trim();
+    const url = String(data.url || '').trim();
+    if (title) {
+      seenTitles.add(title.toLowerCase());
+      pipelineExclusions.push({ title, url });
+    }
+    if (url) {
+      seenUrls.push(url);
+      seenHashes.add(data.urlHash || hashUrl(url));
+    }
+  }
+
+  const pastDaysSnap = await db.collection(`users/${userId}/radarDays`).orderBy('date', 'desc').limit(14).get();
   for (const dayDoc of pastDaysSnap.docs) {
     const itemsSnap = await db.collection(`users/${userId}/radarDays/${dayDoc.id}/items`).get();
     for (const itemDoc of itemsSnap.docs) {
@@ -60,16 +78,18 @@ async function runRadarJob() {
       if (data.url) seenUrls.push(data.url);
     }
   }
-  console.log(`   Loaded ${seenHashes.size} unique URL hashes from recent history.`);
+  console.log(`   Loaded ${pipelineExclusions.length} pipeline exclusions and ${seenHashes.size} URL hashes.`);
 
   // 3. Initialize Gemini
   const ai = new GoogleGenAI({
     apiKey,
-    httpOptions: { headers: { 'User-Agent': 'orbit-radar-job' } },
+    httpOptions: { timeout: 45000, headers: { 'User-Agent': 'orbit-radar-job' } },
   });
 
   const allCollectedItems = [];
   let failedTiersCount = 0;
+  let currentModel = modelName;
+  let searchAvailable = true;
 
   // 4. Execute 4 separate search-grounded Gemini queries
   for (let i = 0; i < RADAR_TIERS.length; i++) {
@@ -79,63 +99,37 @@ async function runRadarJob() {
       await new Promise((r) => setTimeout(r, 3000));
     }
     console.log(`\n📡 [Pass 1] Querying Priority ${tier.priority}: ${tier.name}...`);
-    const prompt = buildRadarDiscoveryPrompt({ tier, currentDateIso: todayDate, seenUrls });
+    const prompt = buildRadarDiscoveryPrompt({ tier, currentDateIso: todayDate, seenUrls, pipelineExclusions });
 
     try {
-      let response;
-      let activeModel = modelName;
-      let attempts = 0;
-
-      while (attempts < 2) {
-        attempts++;
-        try {
-          try {
-            response = await ai.models.generateContent({
-              model: activeModel,
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              config: {
-                thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-                tools: [{ googleSearch: {} }],
-              },
-            });
-          } catch (searchErr) {
-            if (searchErr.message?.includes('429') || searchErr.message?.includes('RESOURCE_EXHAUSTED')) {
-              console.log('   ℹ️ Search grounding rate-limited; generating with high reasoning...');
-              response = await ai.models.generateContent({
-                model: activeModel,
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                config: { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } },
-              });
-            } else {
-              throw searchErr;
-            }
-          }
-          break;
-        } catch (genErr) {
-          if (genErr.message?.includes('RESOURCE_EXHAUSTED') && fallbackModel && activeModel !== fallbackModel) {
-            console.log(`   ⚠️ Quota reached for ${activeModel}; falling back to ${fallbackModel}...`);
-            activeModel = fallbackModel;
-          } else if (attempts < 2 && (genErr.message?.includes('503') || genErr.message?.includes('429'))) {
-            console.log(`   ⏳ Gemini busy (${genErr.message.slice(0, 45)}...), retrying in 4s...`);
-            await new Promise((r) => setTimeout(r, 4000));
-          } else {
-            throw genErr;
-          }
-        }
-      }
+      const response = await generateWithFallback({
+        ai,
+        modelName: currentModel,
+        fallbackModel,
+        prompt,
+        useSearch: searchAvailable,
+        thinkingLevel: ThinkingLevel.LOW,
+        onModelSwitch: (m) => {
+          currentModel = m;
+        },
+        onSearchDisabled: () => {
+          searchAvailable = false;
+        },
+      });
 
       const parsedItems = parseJsonArray(response?.text);
-      console.log(`   Retrieved ${parsedItems.length} candidate items from Gemini.`);
+      console.log(`   Retrieved ${parsedItems.length} candidate items from ${currentModel}.`);
 
       let sectionCount = 0;
       for (const raw of parsedItems) {
         if (!raw.title || !raw.url) continue;
+        const cleanTitle = String(raw.title).trim();
         const cleanUrl = String(raw.url).trim();
         if (!cleanUrl.startsWith('https://')) continue;
         const uHash = hashUrl(cleanUrl);
 
-        if (seenHashes.has(uHash)) {
-          console.log(`   ↳ Skipping duplicate: "${raw.title}"`);
+        if (seenHashes.has(uHash) || seenTitles.has(cleanTitle.toLowerCase())) {
+          console.log(`   ↳ Skipping duplicate/pipeline item: "${cleanTitle}"`);
           continue;
         }
 
@@ -166,10 +160,11 @@ async function runRadarJob() {
           : validDeadline ? 'stated' : 'unknown';
 
         seenHashes.add(uHash);
+        seenTitles.add(cleanTitle.toLowerCase());
         const itemId = `radar-${tier.priority.toLowerCase()}-${crypto.randomUUID()}`;
         const itemRecord = {
           id: itemId,
-          title: String(raw.title).trim(),
+          title: cleanTitle,
           organization: String(raw.organization || 'General').trim(),
           type: raw.type || 'other',
           url: cleanUrl,
@@ -221,9 +216,15 @@ async function runRadarJob() {
         })),
       });
 
-      const matchRes = await ai.models.generateContent({
-        model: modelName,
-        contents: [{ role: 'user', parts: [{ text: matchPrompt }] }],
+      const matchRes = await generateWithFallback({
+        ai,
+        modelName: currentModel,
+        fallbackModel,
+        prompt: matchPrompt,
+        useSearch: false,
+        onModelSwitch: (m) => {
+          currentModel = m;
+        },
       });
 
       const matches = parseJsonArray(matchRes.text);
@@ -264,7 +265,7 @@ async function runRadarJob() {
   await rootRef.set({
     date: todayDate,
     generatedAt: FieldValue.serverTimestamp(),
-    model: modelName,
+    model: currentModel,
     itemCount: allCollectedItems.length,
   }, { merge: true });
 
