@@ -28,12 +28,11 @@ async function runRadarJob() {
 
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   const userId = process.env.TARGET_USER_ID?.trim();
-  const modelName = process.env.GEMINI_MODEL?.trim();
+  const modelName = process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash';
   const fallbackModel = process.env.GEMINI_FALLBACK_MODEL?.trim() || (modelName !== 'gemini-3.5-flash' ? 'gemini-3.5-flash' : '');
 
   if (!apiKey) throw new Error('GEMINI_API_KEY environment variable is required.');
   if (!userId) throw new Error('TARGET_USER_ID environment variable is required.');
-  if (!modelName) throw new Error('GEMINI_MODEL environment variable is required.');
 
   initFirebaseAdmin();
   const db = getFirestore();
